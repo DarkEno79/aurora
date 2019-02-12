@@ -1,0 +1,58 @@
+{
+	"discord_token" : "",
+	"api_url" : "https://omegax.cftools.de/api/v1/",
+	"report_channel" : "",
+	"staff_roles" : "",
+	"guild_id" : "",
+	"status_refresh": 60,
+	"delayed_refresh": 3600,
+	"activity_rotate": true,
+	"activity_refresh": 10,
+	"cooldown_channel": 600,
+	"cooldown_user": 60,
+	"server" : [
+		{
+			"name" : "",
+			"address" : "",
+			"service_id" : "",
+			"service_api_key" : "",
+			"server_url" : "",
+			"server_icon": ""
+		},
+		{
+			"name" : "",
+			"address" : "",
+			"service_id" : "",
+			"service_api_key" : "",
+			"server_url" : "",
+			"server_icon": ""
+
+		},
+		{
+			"name" : "",
+			"address" : "",
+			"service_id" : "",
+			"service_api_key" : "",
+			"server_url" : "",
+			"server_icon": ""
+		},
+		{
+			"name" : "",
+			"address" : "",
+			"service_id" : "",
+			"service_api_key" : "",
+			"server_url" : "",
+			"server_icon": ""
+		},
+		{
+			"name" : "",
+			"address" : "",
+			"service_id" : "",
+			"service_api_key" : "",
+			"server_url" : "",
+			"server_icon": ""
+		}
+	]
+		
+}
+

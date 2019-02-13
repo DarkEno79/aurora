@@ -87,7 +87,7 @@
     
     * Edit config.example.json, add in your information:
 
-    ```json
+```json
 {
 	"discord_token" : "DISCORD_BOT_TOKEN",
 	"api_url" : "https://omegax.cftools.de/api/v1/",
@@ -104,7 +104,7 @@
 		"staff": ["Staff", "Moderators", "Administrators"],
 		"moderators": ["Moderators", "Administrators"],
 		"admins": ["Administrators"]
-		},
+	},
 	"server" : [
 		{
 			"name" : "SERVER_NAME",
@@ -116,7 +116,7 @@
 		}
 	]        
 }
-    ```
+```
 
     * Save as config.json
     

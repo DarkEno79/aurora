@@ -88,34 +88,34 @@
     * Edit config.example.json, add in your information:
 
     ```json
-        {
-            "discord_token" : "DISCORD_BOT_TOKEN",
-            "api_url" : "https://omegax.cftools.de/api/v1/",
-            "report_channel" : "REPORTS_CHANNEL_ID",
-            "staff_roles" : "STAFF_ROLE",
-            "guild_id" : "DISCORD_SERVER_ID",
-            "status_refresh": 60,
-	    "delayed_refresh": 3600,
-	    "activity_rotate": true,
-	    "activity_refresh": 10,
-	    "cooldown_channel": 600,
-	    "cooldown_user": 60,
-            "permissions": {
+{
+	"discord_token" : "DISCORD_BOT_TOKEN",
+	"api_url" : "https://omegax.cftools.de/api/v1/",
+	"report_channel" : "REPORTS_CHANNEL_ID",
+	"staff_roles" : "STAFF_ROLE",
+	"guild_id" : "DISCORD_SERVER_ID",
+	"status_refresh": 60,
+	"delayed_refresh": 3600,
+	"activity_rotate": true,
+	"activity_refresh": 10,
+	"cooldown_channel": 600,
+	"cooldown_user": 60,
+	"permissions": {
 		"staff": ["Staff", "Moderators", "Administrators"],
 		"moderators": ["Moderators", "Administrators"],
 		"admins": ["Administrators"]
-	    },
-	    "server" : [
-                    {
-                        "name" : "SERVER_NAME",
-                        "address" : "IP:PORT",
-                        "service_id" : "SERVICE_ID",
-                        "service_api_key" : "SERVICE_API_KEY",
-                        "server_url" : "WEBSITE_URL",
-                        "server_icon": "URL_FOR_ICON"
-                    }
-            ]        
-        }
+		},
+	"server" : [
+		{
+			"name" : "SERVER_NAME",
+			"address" : "IP:PORT",
+			"service_id" : "SERVICE_ID",
+			"service_api_key" : "SERVICE_API_KEY",
+			"server_url" : "WEBSITE_URL",
+			"server_icon": "URL_FOR_ICON"
+		}
+	]        
+}
     ```
 
     * Save as config.json

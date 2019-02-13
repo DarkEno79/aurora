@@ -213,6 +213,7 @@ async def leaderboard_fetch_async():
                 for api_return in sub_list:
                     server = server_list[index]
                     server.kills = api_return[0]
+                    log.info(server.kills)
                     server.playtime = api_return[1]
                     index += 1
             await session.close()
@@ -244,7 +245,6 @@ async def status_fetch_async():
                     server.players = api_return[1]
                     index += 1
             await session.close()
-            log.info("Server Status/PlayerList Updated")
             await asyncio.sleep(status_refresh)  # task runs every 60 seconds
         except Exception as error:
             log.info('API Fetch Failed:' + str(error))
@@ -993,6 +993,9 @@ async def players(ctx, name: str):
                 embed1.set_footer(text='Server Error', icon_url=server.server_icon)
                 await ctx.send(embed=embed1)
 
+#@bot.command()
+#@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
+#async def queue(ctx):
 
 # Displays Servers in Network
 
@@ -1091,219 +1094,400 @@ async def broadcast(ctx, name: str, message: str):
 
 @bot.command()
 @commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
-async def leaderboard(ctx, name: str, stat_type: str):
-    """ Player Statistics \n\nCommand Syntax: !leaderboard (<all> or <shortname>) (<kills> or <playtime>)"""
-    if stat_type == 'kills' and name == 'all':
-        try:
-            for server in server_list:
-                info = server.info
-                kills = server.kills
-                kills_list = []
-                count = 0
-                for user in kills.get('users', []):
-                    if user['rank'] == 1:
-                        top_killer = '[{}](https://omegax.cftools.de/user/{}) with {} kills!'.format(user['latest_name'], user['cftools_id'], user['kills'])
-                    kill_name = '{} [{}](https://omegax.cftools.de/user/{})'.format(str(user['rank']).rjust(2, '0'),
-                        user['latest_name'][:15].ljust(15, ' '), user['cftools_id']) + '\n'
-                    kills_list.append(kill_name)
-                    count += 1
-                embed_kills = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
-                                            url=server.server_url,
-                                            description='Top Killer: {}'.format(top_killer.center(60, '\u200b')),
-                                            timestamp=datetime.datetime.now().astimezone())
-                embed_kills.set_author(name='Leaderboard: Top 60 in Kills', url=server.server_url,
-                                       icon_url=server.server_icon)
-                embed_kills.set_footer(text="Report Generated",
-                                       icon_url=server.server_icon)
-
-                lower = 0
-                upper = 10
-                player_string = ""
-                if len(kills_list) == 100:
-                    limit = 60
-                else:
-                    limit = len(kills_list)
-                while lower < limit:
-                    for player in kills_list[lower:upper]:
-                        player_string += player
-                    embed_kills.add_field(name='\u200b', value=(player_string.ljust(22, '\u200b')))
-                    player_string = ''
-                    lower += 10
-                    upper += 10
-                await ctx.send(embed=embed_kills)
-                await asyncio.sleep(1)
-        except KeyError as error:
-            if error.args[0] == 'health':
-                embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
-                                       url=server.server_url,
-                                       description=server.address,
-                                       timestamp=datetime.datetime.now().astimezone())
-                embed1.set_author(name='Mod Information', url=server.server_icon,
-                                  icon_url=server.server_icon)
-                embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
-                embed1.set_footer(text='Server Error', icon_url=server.server_icon)
-                await ctx.send(embed=embed1)
-
-    if stat_type == 'kills' and name != 'all':
-        try:
-            for server in server_list:
-                if server.name == name:
+async def kills(ctx, name: str, limit: int):
+    """ Kills Leaderboard \n\nCommand Syntax: !kills [all][server] [limit]"""
+    if limit <= 50:
+        if name == 'all':
+            try:
+                for server in server_list:
+                    upper_limit = limit
                     info = server.info
                     kills = server.kills
                     kills_list = []
+                    count_kills = []
+                    count_deaths = []
                     count = 0
+                    kills_list.clear()
+                    count_deaths.clear()
+                    count_kills.clear()
+                    top_kd_ratio = 0
+                    top_kd_string = ""
+                    top_killer = ""
                     for user in kills.get('users', []):
+                        if int(user['deaths']) != 0:
+                            kd_ratio = round(int(user['kills']) / int(user['deaths']), 2)
+                        else:
+                            kd_ratio = round(int(user['kills']), 2)
+                        if top_kd_ratio < kd_ratio:
+                            top_kd_ratio = kd_ratio
+                            top_kd_string = '[{}](https://omegax.cftools.de/user/{}) with {}%!'.format(
+                                user['latest_name'], user['cftools_id'], kd_ratio)
                         if user['rank'] == 1:
-                            top_killer = '[{}](https://omegax.cftools.de/user/{}) with {} kills!'.format(user['latest_name'], user['cftools_id'], user['kills'])
+                            top_killer = '[{}](https://omegax.cftools.de/user/{}) with {} kills!'.format(
+                                user['latest_name'], user['cftools_id'], user['kills'])
                         kill_name = '{} [{}](https://omegax.cftools.de/user/{})'.format(str(user['rank']).rjust(2, '0'),
-                            user['latest_name'][:15].ljust(15, ' '), user['cftools_id']) + '\n'
-                        kills_list.append(kill_name)
-                        count += 1
-                    embed_kills = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
-                                                url=server.server_url,
-                                                description='Top Killer: {}'.format(top_killer.center(60, '\u200b')),
-                                                timestamp=datetime.datetime.now().astimezone())
-                    embed_kills.set_author(name='Leaderboard: Top 60 in Kills', url=server.server_url,
-                                           icon_url=server.server_icon)
-                    embed_kills.set_footer(text="Report Generated",
-                                           icon_url=server.server_icon)
-
-                    lower = 0
-                    upper = 10
-                    player_string = ""
-                    if len(kills_list) == 100:
-                        limit = 60
-                    else:
-                        limit = len(kills_list)
-                    while lower < limit:
-                        for player in kills_list[lower:upper]:
-                            player_string += player
-                        embed_kills.add_field(name='\u200b', value=(player_string.ljust(22, '\u200b')))
-                        player_string = ''
-                        lower += 10
-                        upper += 10
-                    await ctx.send(embed=embed_kills)
-        except KeyError as error:
-            if error.args[0] == 'health':
-                embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
-                                       url=server.server_url,
-                                       description=server.address,
-                                       timestamp=datetime.datetime.now().astimezone())
-                embed1.set_author(name='Mod Information', url=server.server_icon,
-                                  icon_url=server.server_icon)
-                embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
-                embed1.set_footer(text='Server Error', icon_url=server.server_icon)
-                await ctx.send(embed=embed1)
-
-    if stat_type == 'playtime' and name == 'all':
-        try:
-            for server in server_list:
-                info = server.info
-                playtime = server.playtime
-                playtime_list = []
-                count = 0
-                for user in playtime.get('users', []):
-                    if user['rank'] == 1:
-                        top_playtime = await convert_time(user['playtime'])
-                        top_played = '[{}](https://omegax.cftools.de/user/{}) with {}!'.format(user['latest_name'],
-                                                                                              user['cftools_id'],
-                                                                                              top_playtime)
-                    playtime_name = '{} [{}](https://omegax.cftools.de/user/{})'.format(str(user['rank']).rjust(2, '0'),
                                                                                         user['latest_name'][:15].ljust(
                                                                                             15, ' '),
                                                                                         user['cftools_id']) + '\n'
-                    playtime_list.append(playtime_name)
-                    count += 1
-                embed_playtime = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
-                                               url=server.server_url,
-                                               description='Top Played: {}'.format(top_played.center(60, '\u200b')),
-                                               timestamp=datetime.datetime.now().astimezone())
-                embed_playtime.set_author(name='Leaderboard: Top 60 in Played Time', url=server.server_url,
-                                          icon_url=server.server_icon)
-                embed_playtime.set_footer(text="Report Generated",
-                                          icon_url=server.server_icon)
-
-                lower = 0
-                upper = 10
-                player_string = ""
-                if len(playtime_list) == 100:
-                    limit = 60
-                else:
-                    limit = len(playtime_list)
-                while lower < limit:
-                    for player in playtime_list[lower:upper]:
-                        player_string += player
-                    embed_playtime.add_field(name='\u200b', value=(player_string.ljust(22, '\u200b')))
-                    player_string = ''
-                    lower += 10
-                    upper += 10
-                await ctx.send(embed=embed_playtime)
-                await asyncio.sleep(1)
-        except KeyError as error:
-            if error.args[0] == 'health':
-                embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
-                                       url=server.server_url,
-                                       description=server.address,
-                                       timestamp=datetime.datetime.now().astimezone())
-                embed1.set_author(name='Mod Information', url=server.server_icon,
-                                  icon_url=server.server_icon)
-                embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
-                embed1.set_footer(text='Server Error', icon_url=server.server_icon)
-                await ctx.send(embed=embed1)
-
-    if stat_type == 'playtime' and name != 'all':
-        try:
-            for server in server_list:
-                if server.name == name:
-                    info = server.info
-                    playtime = server.playtime
-                    playtime_list = []
-                    count = 0
-                    for user in playtime.get('users', []):
-                        if user['rank'] == 1:
-                            top_playtime = await convert_time(user['playtime'])
-                            top_played = '[{}](https://omegax.cftools.de/user/{}) with {}!'.format(user['latest_name'],
-                                                                                                   user['cftools_id'],
-                                                                                                   top_playtime)
-                        playtime_name = '{} [{}](https://omegax.cftools.de/user/{})'.format(str(user['rank']).rjust(2, '0'),
-                                                                                            user['latest_name'][:15].ljust(
-                                                                                                15, ' '),
-                                                                                            user['cftools_id']) + '\n'
-                        playtime_list.append(playtime_name)
+                        kills = '{}'.format(str(user['kills'])) + '\n'
+                        deaths = '{}'.format(str(user['deaths'])) + '\n'
+                        count_kills.append(kills)
+                        count_deaths.append(deaths)
+                        kills_list.append(kill_name)
                         count += 1
-                    embed_playtime = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
-                                                   url=server.server_url,
-                                                   description='Top Played: {}'.format(top_played.center(60, '\u200b')),
-                                                   timestamp=datetime.datetime.now().astimezone())
-                    embed_playtime.set_author(name='Leaderboard: Top 60 in Played Time', url=server.server_url,
-                                              icon_url=server.server_icon)
-                    embed_playtime.set_footer(text="Report Generated",
-                                              icon_url=server.server_icon)
-
+                    if top_kd_string == "":
+                        top_killer = ''
+                        top_kd_string = ''
+                    embed_kills = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
+                                                url=server.server_url,
+                                                description='\nTop Killer: {}\nTop K/D: {}'.format(top_killer,
+                                                                                                   top_kd_string),
+                                                timestamp=datetime.datetime.now().astimezone())
+                    embed_kills.set_author(name='Server Leaderboard', url=server.server_url,
+                                           icon_url=server.server_icon)
+                    embed_kills.set_footer(text="Report Generated",
+                                           icon_url=server.server_icon)
                     lower = 0
                     upper = 10
                     player_string = ""
-                    if len(playtime_list) == 100:
-                        limit = 60
-                    else:
-                        limit = len(playtime_list)
-                    while lower < limit:
-                        for player in playtime_list[lower:upper]:
+                    kills_string = ""
+                    deaths_string = ""
+                    if upper_limit < upper:
+                        upper = upper_limit
+                    if len(kills_list) < upper_limit:
+                        upper_limit = len(kills_list)
+                    tier = 1
+                    parsed = 0
+                    while upper <= upper_limit:
+                        for player in kills_list[lower:upper]:
                             player_string += player
-                        embed_playtime.add_field(name='\u200b', value=(player_string.ljust(22, '\u200b')))
-                        player_string = ''
+                        for kills in count_kills[lower:upper]:
+                            kills_string += kills
+                        for deaths in count_deaths[lower:upper]:
+                            deaths_string += deaths
+                        embed_kills.add_field(name='Tier {}'.format(tier), value=(player_string.ljust(20, '\u200b')),
+                                              inline=True)
+                        embed_kills.add_field(name='Kills'.format(tier),
+                                              value='{}'.format(kills_string.rjust(4, '\u200b')), inline=True)
+                        embed_kills.add_field(name='Deaths'.format(tier),
+                                              value='{}'.format(deaths_string.rjust(4, '\u200b')), inline=True)
+                        player_string = ""
+                        kills_string = ""
+                        deaths_string = ""
                         lower += 10
                         upper += 10
-                    await ctx.send(embed=embed_playtime)
-        except KeyError as error:
-            if error.args[0] == 'health':
-                embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
-                                       url=server.server_url,
-                                       description=server.address,
-                                       timestamp=datetime.datetime.now().astimezone())
-                embed1.set_author(name='Mod Information', url=server.server_icon,
-                                  icon_url=server.server_icon)
-                embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
-                embed1.set_footer(text='Server Error', icon_url=server.server_icon)
-                await ctx.send(embed=embed1)
+                        tier += 1
+                        parsed += 10
+                    if parsed < upper_limit:
+                        for player in kills_list[parsed:upper_limit]:
+                            player_string += player
+                        for kills in count_kills[parsed:upper_limit]:
+                            kills_string += kills
+                        for deaths in count_deaths[parsed:upper_limit]:
+                            deaths_string += deaths
+                        embed_kills.add_field(name='Tier {}'.format(tier), value=(player_string.ljust(20, '\u200b')),
+                                              inline=True)
+                        embed_kills.add_field(name='Kills'.format(tier),
+                                              value='{}'.format(kills_string.rjust(4, '\u200b')), inline=True)
+                        embed_kills.add_field(name='Deaths'.format(tier),
+                                              value='{}'.format(deaths_string.rjust(4, '\u200b')), inline=True)
+                    await ctx.send(embed=embed_kills)
+                    await asyncio.sleep(1)
+            except KeyError as error:
+                if error.args[0] == 'user':
+                    embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
+                                           url=server.server_url,
+                                           description=server.address,
+                                           timestamp=datetime.datetime.now().astimezone())
+                    embed1.set_author(name='Server Error', url=server.server_icon,
+                                      icon_url=server.server_icon)
+                    embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
+                    embed1.set_footer(text='Server Error', icon_url=server.server_icon)
+                    await ctx.send(embed=embed1)
+
+        if name != 'all':
+            try:
+                for server in server_list:
+                    if server.name == name:
+                        upper_limit = limit
+                        info = server.info
+                        kills = server.kills
+                        kills_list = []
+                        count_kills = []
+                        count_deaths = []
+                        count = 0
+                        kills_list.clear()
+                        count_deaths.clear()
+                        count_kills.clear()
+                        top_kd_ratio = 0
+                        top_kd_string = ""
+                        top_killer = ""
+                        for user in kills.get('users', []):
+                            if int(user['deaths']) != 0:
+                                kd_ratio = round(int(user['kills']) / int(user['deaths']), 2)
+                            else:
+                                kd_ratio = round(int(user['kills']), 2)
+                            if top_kd_ratio < kd_ratio:
+                                top_kd_ratio = kd_ratio
+                                top_kd_string = '[{}](https://omegax.cftools.de/user/{}) with {}%!'.format(
+                                    user['latest_name'], user['cftools_id'], kd_ratio)
+                            if user['rank'] == 1:
+                                top_killer = '[{}](https://omegax.cftools.de/user/{}) with {} kills!'.format(
+                                    user['latest_name'], user['cftools_id'], user['kills'])
+                            kill_name = '{} [{}](https://omegax.cftools.de/user/{})'.format(
+                                str(user['rank']).rjust(2, '0'),
+                                user['latest_name'][:15].ljust(
+                                    15, ' '),
+                                user['cftools_id']) + '\n'
+                            kills = '{}'.format(str(user['kills'])) + '\n'
+                            deaths = '{}'.format(str(user['deaths'])) + '\n'
+                            count_kills.append(kills)
+                            count_deaths.append(deaths)
+                            kills_list.append(kill_name)
+                            count += 1
+                        if top_kd_string == "":
+                            top_killer = ''
+                            top_kd_string = ''
+                        embed_kills = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
+                                                    url=server.server_url,
+                                                    description='\nTop Killer: {}\nTop K/D: {}'.format(top_killer,
+                                                                                                       top_kd_string),
+                                                    timestamp=datetime.datetime.now().astimezone())
+                        embed_kills.set_author(name='Server Leaderboard', url=server.server_url,
+                                               icon_url=server.server_icon)
+                        embed_kills.set_footer(text="Report Generated",
+                                               icon_url=server.server_icon)
+                        lower = 0
+                        upper = 10
+                        player_string = ""
+                        kills_string = ""
+                        deaths_string = ""
+                        if upper_limit < upper:
+                            upper = upper_limit
+                        if len(kills_list) < upper_limit:
+                            upper_limit = len(kills_list)
+                        tier = 1
+                        parsed = 0
+                        while upper <= upper_limit:
+                            for player in kills_list[lower:upper]:
+                                player_string += player
+                            for kills in count_kills[lower:upper]:
+                                kills_string += kills
+                            for deaths in count_deaths[lower:upper]:
+                                deaths_string += deaths
+                            embed_kills.add_field(name='Tier {}'.format(tier),
+                                                  value=(player_string.ljust(20, '\u200b')),
+                                                  inline=True)
+                            embed_kills.add_field(name='Kills'.format(tier),
+                                                  value='{}'.format(kills_string.rjust(4, '\u200b')), inline=True)
+                            embed_kills.add_field(name='Deaths'.format(tier),
+                                                  value='{}'.format(deaths_string.rjust(4, '\u200b')), inline=True)
+                            player_string = ""
+                            kills_string = ""
+                            deaths_string = ""
+                            lower += 10
+                            upper += 10
+                            tier += 1
+                            parsed += 10
+                        if parsed < upper_limit:
+                            for player in kills_list[parsed:upper_limit]:
+                                player_string += player
+                            for kills in count_kills[parsed:upper_limit]:
+                                kills_string += kills
+                            for deaths in count_deaths[parsed:upper_limit]:
+                                deaths_string += deaths
+                            embed_kills.add_field(name='Tier {}'.format(tier),
+                                                  value=(player_string.ljust(20, '\u200b')),
+                                                  inline=True)
+                            embed_kills.add_field(name='Kills'.format(tier),
+                                                  value='{}'.format(kills_string.rjust(4, '\u200b')), inline=True)
+                            embed_kills.add_field(name='Deaths'.format(tier),
+                                                  value='{}'.format(deaths_string.rjust(4, '\u200b')), inline=True)
+                        await ctx.send(embed=embed_kills)
+            except KeyError as error:
+                if error.args[0] == 'user':
+                    embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
+                                           url=server.server_url,
+                                           description=server.address,
+                                           timestamp=datetime.datetime.now().astimezone())
+                    embed1.set_author(name='Server Error', url=server.server_icon,
+                                      icon_url=server.server_icon)
+                    embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
+                    embed1.set_footer(text='Server Error', icon_url=server.server_icon)
+                    await ctx.send(embed=embed1)
+    if limit > 50:
+        await ctx.send("Specified Limit Too High: 50 Max")
+
+
+@bot.command()
+@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
+async def played(ctx, name: str, limit: int):
+    """ Played Time Leaderboard \n\nCommand Syntax: !played [all][server] [limit]"""
+    if limit <= 50:
+        if name == 'all':
+            try:
+                for server in server_list:
+
+                    upper_limit = limit
+                    info = server.info
+                    playtime = server.playtime
+                    time_list = []
+                    name_list = []
+                    count = 0
+                    name_list.clear()
+                    time_list.clear()
+                    top_played = ""
+                    for user in playtime.get('users', []):
+                        if user['rank'] == 1:
+                            top_played = '[{}](https://omegax.cftools.de/user/{}) with {}!'.format(
+                                user['latest_name'], user['cftools_id'], await convert_time(user['playtime']))
+                        played_name = '{} [{}](https://omegax.cftools.de/user/{})'.format(
+                            str(user['rank']).rjust(2, '0'), user['latest_name'][:15].ljust(15, ' '),
+                            user['cftools_id']) + '\n'
+                        played_time = '{}'.format(str(await convert_time(user['playtime']))) + '\n'
+                        time_list.append(played_time)
+                        name_list.append(played_name)
+                        count += 1
+                    embed_played = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
+                                                 url=server.server_url,
+                                                 description='\nMost Played: {}'.format(top_played),
+                                                 timestamp=datetime.datetime.now().astimezone())
+                    embed_played.set_author(name='Server Leaderboard', url=server.server_url,
+                                            icon_url=server.server_icon)
+                    embed_played.set_footer(text="Report Generated",
+                                            icon_url=server.server_icon)
+                    lower = 0
+                    upper = 10
+                    played_name = ""
+                    played_time = ""
+                    if upper_limit < upper:
+                        upper = upper_limit
+                    if len(name_list) < upper_limit:
+                        upper_limit = len(name_list)
+                    tier = 1
+                    parsed = 0
+                    while upper <= upper_limit:
+                        for player in name_list[lower:upper]:
+                            played_name += player
+                        for time in time_list[lower:upper]:
+                            played_time += time
+                        embed_played.add_field(name='Tier {}'.format(tier), value=(played_name.ljust(20, '\u200b')),
+                                               inline=True)
+                        embed_played.add_field(name='Played For'.format(tier),
+                                               value='{}'.format(played_time.rjust(4, '\u200b')), inline=True)
+                        embed_played.add_field(name='\u200b', value='\u200b', inline=True)
+                        played_name = ""
+                        played_time = ""
+                        lower += 10
+                        upper += 10
+                        tier += 1
+                        parsed += 10
+                    if parsed < upper_limit:
+                        for player in name_list[parsed:upper_limit]:
+                            played_name += player
+                        for time in time_list[parsed:upper_limit]:
+                            played_time += time
+                        embed_played.add_field(name='Tier {}'.format(tier), value=(played_name.ljust(20, '\u200b')),
+                                               inline=True)
+                        embed_played.add_field(name='Played For'.format(tier),
+                                               value='{}'.format(played_time.rjust(4, '\u200b')), inline=True)
+                        embed_played.add_field(name='\u200b', value='\u200b', inline=True)
+                    await ctx.send(embed=embed_played)
+                    await asyncio.sleep(1)
+            except KeyError as error:
+                if error.args[0] == 'user':
+                    embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
+                                           url=server.server_url,
+                                           description=server.address,
+                                           timestamp=datetime.datetime.now().astimezone())
+                    embed1.set_author(name='Server Error', url=server.server_icon,
+                                      icon_url=server.server_icon)
+                    embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
+                    embed1.set_footer(text='Server Error', icon_url=server.server_icon)
+                    await ctx.send(embed=embed1)
+
+        if name != 'all':
+            try:
+                for server in server_list:
+                    if server.name == name:
+                        upper_limit = limit
+                        info = server.info
+                        playtime = server.playtime
+                        time_list = []
+                        name_list = []
+                        count = 0
+                        name_list.clear()
+                        time_list.clear()
+                        top_played = ""
+                        for user in playtime.get('users', []):
+                            if user['rank'] == 1:
+                                top_played = '[{}](https://omegax.cftools.de/user/{}) with {}!'.format(
+                                    user['latest_name'], user['cftools_id'], await convert_time(user['playtime']))
+                            played_name = '{} [{}](https://omegax.cftools.de/user/{})'.format(
+                                str(user['rank']).rjust(2, '0'), user['latest_name'][:15].ljust(15, ' '),
+                                user['cftools_id']) + '\n'
+                            played_time = '{}'.format(str(await convert_time(user['playtime']))) + '\n'
+                            time_list.append(played_time)
+                            name_list.append(played_name)
+                            count += 1
+                        embed_played = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
+                                                     url=server.server_url,
+                                                     description='\nMost Played: {}'.format(top_played),
+                                                     timestamp=datetime.datetime.now().astimezone())
+                        embed_played.set_author(name='Server Leaderboard', url=server.server_url,
+                                                icon_url=server.server_icon)
+                        embed_played.set_footer(text="Report Generated",
+                                                icon_url=server.server_icon)
+                        lower = 0
+                        upper = 10
+                        played_name = ""
+                        played_time = ""
+                        if upper_limit < upper:
+                            upper = upper_limit
+                        if len(name_list) < upper_limit:
+                            upper_limit = len(name_list)
+                        tier = 1
+                        parsed = 0
+                        while upper <= upper_limit:
+                            for player in name_list[lower:upper]:
+                                played_name += player
+                            for time in time_list[lower:upper]:
+                                played_time += time
+                            embed_played.add_field(name='Tier {}'.format(tier), value=(played_name.ljust(20, '\u200b')),
+                                                   inline=True)
+                            embed_played.add_field(name='Played For'.format(tier),
+                                                   value='{}'.format(played_time.rjust(4, '\u200b')), inline=True)
+                            embed_played.add_field(name='\u200b', value='\u200b', inline=True)
+                            played_name = ""
+                            played_time = ""
+                            lower += 10
+                            upper += 10
+                            tier += 1
+                            parsed += 10
+                        if parsed < upper_limit:
+                            for player in name_list[parsed:upper_limit]:
+                                played_name += player
+                            for time in time_list[parsed:upper_limit]:
+                                played_time += time
+                            embed_played.add_field(name='Tier {}'.format(tier), value=(played_name.ljust(20, '\u200b')),
+                                                   inline=True)
+                            embed_played.add_field(name='Played For'.format(tier),
+                                                   value='{}'.format(played_time.rjust(4, '\u200b')), inline=True)
+                            embed_played.add_field(name='\u200b', value='\u200b', inline=True)
+                        await ctx.send(embed=embed_played)
+
+            except KeyError as error:
+                if error.args[0] == 'user':
+                    embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
+                                           url=server.server_url,
+                                           description=server.address,
+                                           timestamp=datetime.datetime.now().astimezone())
+                    embed1.set_author(name='Server Error', url=server.server_icon,
+                                      icon_url=server.server_icon)
+                    embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
+                    embed1.set_footer(text='Server Error', icon_url=server.server_icon)
+                    await ctx.send(embed=embed1)
+    if limit > 50:
+        await ctx.send("Specified Limit Too High: 50 Max")
+
 bot.run(token)

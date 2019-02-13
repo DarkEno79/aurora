@@ -95,12 +95,17 @@
             "staff_roles" : "STAFF_ROLE",
             "guild_id" : "DISCORD_SERVER_ID",
             "status_refresh": 60,
-	        "delayed_refresh": 3600,
-	        "activity_rotate": true,
-	        "activity_refresh": 10,
-	        "cooldown_channel": 600,
-	        "cooldown_user": 60,
-            "server" : [
+	    "delayed_refresh": 3600,
+	    "activity_rotate": true,
+	    "activity_refresh": 10,
+	    "cooldown_channel": 600,
+	    "cooldown_user": 60,
+            "permissions": {
+		"staff": ["Staff", "Moderators", "Administrators"],
+		"moderators": ["Moderators", "Administrators"],
+		"admins": ["Administrators"]
+	    },
+	    "server" : [
                     {
                         "name" : "SERVER_NAME",
                         "address" : "IP:PORT",

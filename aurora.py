@@ -468,59 +468,59 @@ async def played(ctx, name: str, limit: int):
     if limit > 50:
         await ctx.send("Specified Limit Too High: 50 Max")
 
-@bot.command()
-@commands.has_any_role(*staff_role)
-@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
-async def wlview(ctx, name: str):
-    """ Played Time Leaderboard \n\nCommand Syntax: !wlview [all][server] [limit]"""
-    if name == 'all':
-        for server in server_list:
-            output = ""
-            info = server.info
-            embed = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
-                                  url=server.server_url,
-                                  description=server.address,
-                                  timestamp=datetime.datetime.now().astimezone())
-            embed.set_author(name='Server Whitelist', url=server.server_url,
-                             icon_url=server.server_icon)
-            embed.set_footer(text="Report Generated",
-                             icon_url=server.server_icon)
-
-            for user in server.whitelist['data']:
-                output += '[PlaceHolder](https://omegax.cftools.de/user/{}) issued at {} by {}'.format(
-                    user['cftools_id'],
-                    time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(user['issued_at'])),
-                    '[PlaceHolder](https://omegax.cftools.de/user/{})'.format(user['issued_by'])) + '\n'
-            if len(output) != 0:
-                embed.add_field(name='Whitelist Entries', value=output)
-            else:
-                embed.add_field(name='No Whitelist Entries', value='\u200b')
-            await ctx.send(embed=embed)
-            await asyncio.sleep(1)
-    if name != 'all':
-        output = ""
-        found = False
-        for server in server_list:
-            if server.name == name:
-                found = True
-                info = server.info
-                embed = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
-                                             url=server.server_url,
-                                             description=server.address,
-                                             timestamp=datetime.datetime.now().astimezone())
-                embed.set_author(name='Server Whitelist', url=server.server_url,
-                                        icon_url=server.server_icon)
-                embed.set_footer(text="Report Generated",
-                                        icon_url=server.server_icon)
-
-                for user in server.whitelist['data']:
-                    output += '[PlaceHolder](https://omegax.cftools.de/user/{}) issued at {} by {}'.format(user['cftools_id'],
-                                                                                              time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(user['issued_at'])),
-                                                                                                           '[PlaceHolder](https://omegax.cftools.de/user/{})'.format(user['issued_by'])) + '\n'
-                embed.add_field(name='Whitelist Entries', value=output)
-                await ctx.send(embed=embed)
-        if found == False:
-            await ctx.send('Error: Server Not Found')
+#@bot.command()
+#@commands.has_any_role(*staff_role)
+#@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
+#async def wlview(ctx, name: str):
+#    """ Played Time Leaderboard \n\nCommand Syntax: !wlview [all][server] [limit]"""
+#    if name == 'all':
+#         for server in server_list:
+#             output = ""
+#             info = server.info
+#             embed = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
+#                                   url=server.server_url,
+#                                   description=server.address,
+#                                   timestamp=datetime.datetime.now().astimezone())
+#             embed.set_author(name='Server Whitelist', url=server.server_url,
+#                              icon_url=server.server_icon)
+#             embed.set_footer(text="Report Generated",
+#                              icon_url=server.server_icon)
+#
+#             for user in server.whitelist['data']:
+#                 output += '[PlaceHolder](https://omegax.cftools.de/user/{}) issued at {} by {}'.format(
+#                     user['cftools_id'],
+#                     time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(user['issued_at'])),
+#                     '[PlaceHolder](https://omegax.cftools.de/user/{})'.format(user['issued_by'])) + '\n'
+#             if len(output) != 0:
+#                 embed.add_field(name='Whitelist Entries', value=output)
+#             else:
+#                 embed.add_field(name='No Whitelist Entries', value='\u200b')
+#             await ctx.send(embed=embed)
+#             await asyncio.sleep(1)
+#     if name != 'all':
+#         output = ""
+#         found = False
+#         for server in server_list:
+#             if server.name == name:
+#                 found = True
+#                 info = server.info
+#                 embed = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
+#                                              url=server.server_url,
+#                                              description=server.address,
+#                                              timestamp=datetime.datetime.now().astimezone())
+#                 embed.set_author(name='Server Whitelist', url=server.server_url,
+#                                         icon_url=server.server_icon)
+#                 embed.set_footer(text="Report Generated",
+#                                         icon_url=server.server_icon)
+#
+#                 for user in server.whitelist['data']:
+#                     output += '[PlaceHolder](https://omegax.cftools.de/user/{}) issued at {} by {}'.format(user['cftools_id'],
+#                                                                                               time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(user['issued_at'])),
+#                                                                                                            '[PlaceHolder](https://omegax.cftools.de/user/{})'.format(user['issued_by'])) + '\n'
+#                 embed.add_field(name='Whitelist Entries', value=output)
+#                 await ctx.send(embed=embed)
+#         if found == False:
+#             await ctx.send('Error: Server Not Found')
 
 
 

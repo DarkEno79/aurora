@@ -77,6 +77,9 @@
 * Installation Instructions:
     * Install Python 3 (3.4+ Required)
         * https://www.python.org/downloads/
+
+	* Install Git
+		* https://git-scm.com/downloads
     
     * Create a Discord Bot
         * https://discordpy.readthedocs.io/en/rewrite/discord.html
@@ -126,4 +129,5 @@
     * Save as config.json
     
     * Run Bot:
-        ``` python aurora.py ```
+		python aurora.py
+

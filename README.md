@@ -12,7 +12,12 @@
         * 1st/3rd Person Status
         * Map
         * Hive
-    **Activity Cycling
+	* Permissions System
+		* 3 Tiers
+			* Staff
+			* Moderators
+			* Administrator
+    * Activity Cycling
         * Server Player Count
         * Status (Online, Not Available, Idle)
         * User Configurable

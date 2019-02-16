@@ -154,6 +154,21 @@ async def display_mods(ctx, server):
             embed1.add_field(name="No Mods reported via API", value=output_mods)
             await ctx.send(embed=embed1)
             await asyncio.sleep(1)
+        if len(mod_list) <= 5 and len(mod_list) != 0:
+            embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
+                                   url=server.server_url,
+                                   description=server.address,
+                                   timestamp=datetime.datetime.now().astimezone())
+            embed1.set_author(name='Mod Information', url=server.server_icon,
+                              icon_url=server.server_icon)
+            for mod in mod_list:
+                output_mods += mod
+            embed1.add_field(name='\u200b', value=output_mods, inline=True)
+            embed1.set_footer(
+                text='{} Mods'.format(len(mod_list)),
+                icon_url=server.server_icon)
+            await ctx.send(embed=embed1)
+            await asyncio.sleep(1)
         if len(mod_list) < 10 and len(mod_list) != 0:
             embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
                                    url=server.server_url,
@@ -293,7 +308,7 @@ async def display_players(ctx, server):
                 count += 1
                 if count == 10:
                     embed1.add_field(name='\u200b', value=player_listing, inline=True)
-                    player_listing = ''
+                    playerw_listing = ''
                     count = 0
             embed1.add_field(name='\u200b', value=player_listing, inline=True)
             embed1.set_footer(text='{}/{} Players Online'.format(info['current_players'], info['max_players']),

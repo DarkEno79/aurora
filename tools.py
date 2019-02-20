@@ -304,11 +304,11 @@ async def display_players(ctx, server):
             embed1.set_footer(text='{}/{} Players Online'.format(info['current_players'], info['max_players']),
                               icon_url=server.server_icon)
             for player in player_list:
-                player_listing += player
+                player_listing += str(player)
                 count += 1
                 if count == 10:
                     embed1.add_field(name='\u200b', value=player_listing, inline=True)
-                    playerw_listing = ''
+                    player_listing = ''
                     count = 0
             embed1.add_field(name='\u200b', value=player_listing, inline=True)
             embed1.set_footer(text='{}/{} Players Online'.format(info['current_players'], info['max_players']),
@@ -354,7 +354,7 @@ async def display_players(ctx, server):
                                    url=server.server_url,
                                    description=server.address,
                                    timestamp=datetime.datetime.now().astimezone())
-            embed1.set_author(name='Mod Information', url=server.server_icon,
+            embed1.set_author(name='Server Information', url=server.server_icon,
                               icon_url=server.server_icon)
             embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
             embed1.set_footer(text='Server Error', icon_url=server.server_icon)

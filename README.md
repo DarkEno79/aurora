@@ -90,6 +90,8 @@
         It will install required dependencies automatically.
 
     * Install other required libraries
+    	* ``` python -m pip install requests ```
+	* ``` python -m pip install requests-cache ```
         * ``` python -m pip install asyncio ```
         * ``` python -m pip install aiohttp ```
     

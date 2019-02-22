@@ -69,6 +69,10 @@
 * Requirements:
     * [Discord.py 1.0.0a](https://github.com/Rapptz/discord.py/tree/rewrite) 
         * Discord Python Library
+    * [Requests](http://docs.python-requests.org/en/master/)
+    	* Requests Library
+    * [Requests-Cache](https://pypi.org/project/requests-cache/)
+    	* Caching library for requests
     * [AIOHTTP](https://aiohttp.readthedocs.io/en/stable)
         * Asynchronous HTTP connections
     * [ASyncIO](https://docs.python.org/3/library/asyncio.html)
@@ -90,7 +94,7 @@
         It will install required dependencies automatically.
 
     * Install other required libraries
-    	* ``` python -m pip install requests ```
+	* ``` python -m pip install requests ```
 	* ``` python -m pip install requests-cache ```
         * ``` python -m pip install asyncio ```
         * ``` python -m pip install aiohttp ```

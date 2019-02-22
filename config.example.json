@@ -3,7 +3,7 @@
 	"api_url" : "https://omegax.cftools.de/api/v1/",
 	"report_channel" : "",
 	"guild_id" : "",
-	"status_refresh": 60,
+	"status_refresh": 300,
 	"delayed_refresh": 3600,
 	"activity_rotate": true,
 	"activity_refresh": 10,

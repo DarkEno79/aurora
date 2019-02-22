@@ -189,7 +189,7 @@ async def display_mods(ctx, server):
                 icon_url=server.server_icon)
             await ctx.send(embed=embed1)
             await asyncio.sleep(1)
-        if 10 < len(mod_list) <= 20:
+        if 10 < len(mod_list) <= 30:
             embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
                                    url=server.server_url,
                                    description=server.address,
@@ -210,7 +210,7 @@ async def display_mods(ctx, server):
                 icon_url=server.server_icon)
             await ctx.send(embed=embed1)
             await asyncio.sleep(1)
-        if 20 > len(mod_list) >= 40:
+        if 30 < len(mod_list) <= 60:
             embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
                                    url=server.server_url,
                                    description=server.address)
@@ -221,7 +221,7 @@ async def display_mods(ctx, server):
             embed2.set_footer(
                 text='{} Mods'.format(len(mod_list)),
                 icon_url=server.server_icon)
-            for mod in mod_list[:20]:
+            for mod in mod_list[:30]:
                 output_mods += mod
                 count += 1
                 if count == 5:
@@ -230,10 +230,10 @@ async def display_mods(ctx, server):
                     count = 0
             output_mods = ''
             count = 0
-            for mod in mod_list[20:]:
+            for mod in mod_list[30:]:
                 output_mods += mod
                 count += 1
-                if count == 10:
+                if count == 5:
                     embed2.add_field(name='\u200b', value=output_mods)
                     output_mods = ''
                     count = 0

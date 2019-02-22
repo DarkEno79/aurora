@@ -132,9 +132,13 @@ async def display_mods(ctx, server):
         mod_list = []
         output_mods = ''
         for mod in server.info['health']['game'].get('mods', []):
-            mod_string = '[{}](https://steamcommunity.com/sharedfiles/filedetails/?id={})\n'.format(
-                (str(mod['directory'])[1:22]).ljust(22, '\u200b'), (str(mod['file_id'])))
-            mod_list.append(mod_string)
+            if mod['file_id'] != None:
+                mod_string = '[{}](https://steamcommunity.com/sharedfiles/filedetails/?id={})\n'.format(
+                    (str(mod['directory'])[1:22]).ljust(22, '\u200b'), (str(mod['file_id'])))
+                mod_list.append(mod_string)
+            elif mod['file_id'] == None:
+                mod_string = '{}'.format(str(mod['directory'])[1:22]).ljust(22, '\u200b')
+                mod_list.append(mod_string)
         count = 0
         if len(mod_list) == 0:
             output_mods = "\u200b"
@@ -147,7 +151,22 @@ async def display_mods(ctx, server):
             embed1.set_footer(
                 text='{} Mods'.format(len(mod_list)),
                 icon_url=server.server_icon)
-            embed1.add_field(name="Vanilla Server: No Mods Installed", value=output_mods)
+            embed1.add_field(name="No Mods reported via API", value=output_mods)
+            await ctx.send(embed=embed1)
+            await asyncio.sleep(1)
+        if len(mod_list) <= 5 and len(mod_list) != 0:
+            embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
+                                   url=server.server_url,
+                                   description=server.address,
+                                   timestamp=datetime.datetime.now().astimezone())
+            embed1.set_author(name='Mod Information', url=server.server_icon,
+                              icon_url=server.server_icon)
+            for mod in mod_list:
+                output_mods += mod
+            embed1.add_field(name='\u200b', value=output_mods, inline=True)
+            embed1.set_footer(
+                text='{} Mods'.format(len(mod_list)),
+                icon_url=server.server_icon)
             await ctx.send(embed=embed1)
             await asyncio.sleep(1)
         if len(mod_list) < 10 and len(mod_list) != 0:
@@ -170,7 +189,7 @@ async def display_mods(ctx, server):
                 icon_url=server.server_icon)
             await ctx.send(embed=embed1)
             await asyncio.sleep(1)
-        if 10 < len(mod_list) <= 20:
+        if 10 < len(mod_list) <= 30:
             embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
                                    url=server.server_url,
                                    description=server.address,
@@ -191,7 +210,7 @@ async def display_mods(ctx, server):
                 icon_url=server.server_icon)
             await ctx.send(embed=embed1)
             await asyncio.sleep(1)
-        if 20 > len(mod_list) >= 40:
+        if 30 < len(mod_list) <= 60:
             embed1 = discord.Embed(title=info['servername'], colour=discord.Colour(0x3D85C6),
                                    url=server.server_url,
                                    description=server.address)
@@ -202,7 +221,7 @@ async def display_mods(ctx, server):
             embed2.set_footer(
                 text='{} Mods'.format(len(mod_list)),
                 icon_url=server.server_icon)
-            for mod in mod_list[:20]:
+            for mod in mod_list[:30]:
                 output_mods += mod
                 count += 1
                 if count == 5:
@@ -211,10 +230,10 @@ async def display_mods(ctx, server):
                     count = 0
             output_mods = ''
             count = 0
-            for mod in mod_list[20:]:
+            for mod in mod_list[30:]:
                 output_mods += mod
                 count += 1
-                if count == 10:
+                if count == 5:
                     embed2.add_field(name='\u200b', value=output_mods)
                     output_mods = ''
                     count = 0
@@ -285,7 +304,7 @@ async def display_players(ctx, server):
             embed1.set_footer(text='{}/{} Players Online'.format(info['current_players'], info['max_players']),
                               icon_url=server.server_icon)
             for player in player_list:
-                player_listing += player
+                player_listing += str(player)
                 count += 1
                 if count == 10:
                     embed1.add_field(name='\u200b', value=player_listing, inline=True)
@@ -335,7 +354,7 @@ async def display_players(ctx, server):
                                    url=server.server_url,
                                    description=server.address,
                                    timestamp=datetime.datetime.now().astimezone())
-            embed1.set_author(name='Mod Information', url=server.server_icon,
+            embed1.set_author(name='Server Information', url=server.server_icon,
                               icon_url=server.server_icon)
             embed1.add_field(name="Server Did Not Respond, May Be Down", value='\u200b')
             embed1.set_footer(text='Server Error', icon_url=server.server_icon)
@@ -454,10 +473,10 @@ async def display_played(ctx, limit, server):
         playtime = server.playtime
         time_list = []
         name_list = []
-        count = 0
         name_list.clear()
         time_list.clear()
         top_played = ""
+        count = 0
         for user in playtime.get('users', []):
             if user['rank'] == 1:
                 top_played = '[{}](https://omegax.cftools.de/user/{}) with {}!'.format(
@@ -589,10 +608,10 @@ class CommandErrorHandler:
         if isinstance(error, commands.errors.MissingRequiredArgument):
             await ctx.send('This command is missing an argument.')
             return
-
+# TODO: Implement forwarding help
         if isinstance(error, commands.UserInputError):
             await ctx.send("Invalid input.")
-            await self.send_command_help(ctx)
+            #await self.send_command_help(ctx)
             return
 
         if isinstance(error, commands.NoPrivateMessage):

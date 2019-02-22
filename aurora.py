@@ -15,13 +15,17 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import tools
 import asyncio
-import time
 import json
 import logging
 import aiohttp
 import datetime
 import discord
 from discord.ext import commands
+import requests
+import time
+import requests_cache
+requests_cache.install_cache('test_cache', backend='memory', expire_after=900, allowable_methods=('GET', 'POST'))
+
 
 headers = {'contentType': 'application/x-www-form-urlencoded','User-Agent': 'CFTools ServiceAPI-Client'}
 
@@ -142,7 +146,7 @@ async def whitelist_fetch_async():
                     server.whitelist = result
                     index += 1
                 log.info("Server(s) Whitelist Updated")
-                await asyncio.sleep(status_refresh)
+                await asyncio.sleep(delayed_refresh)
             await session.close()
         except Exception as error:
             log.info('Fetch Error:' + str(error))
@@ -159,9 +163,10 @@ async def initialize_servers():
         update.service_id = server['service_id']
         update.server_icon = server['server_icon']
         server_list.append(update)
-    bot.loop.create_task(status_fetch_async())
-    bot.loop.create_task(leaderboard_fetch_async())
-    bot.loop.create_task(whitelist_fetch_async())
+        bot.loop.create_task(status_fetch_async())
+        bot.loop.create_task(whitelist_fetch_async())
+        bot.loop.create_task(leaderboard_fetch_async())
+
 
 
 bot = commands.Bot(command_prefix='!', description='Aurora - The DayZ Discord Bot')
@@ -184,7 +189,7 @@ async def on_ready():
 @commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
 @commands.has_any_role(*admin_role)
 async def reload(ctx):
-    """Reloads Configuration File"""
+    """[ADMIN] Reloads Configuration File"""
     log.info("Configuration Reload Requested")
     await ctx.send("Configuration Reload Requested")
     with open('config.json', 'r') as config_file:
@@ -263,7 +268,7 @@ async def status(ctx, name: str):
 @commands.has_any_role(*staff_role)
 @commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
 async def tech(ctx, name: str):
-    """Displays Server Technical Details"""
+    """[STAFF] Displays Server Technical Details"""
     if name == 'all':
         for server in server_list:
             await tools.display_tech(ctx, server)
@@ -323,9 +328,10 @@ async def schedule(ctx, name: str):
 
 
 @bot.command()
+@commands.has_any_role(*staff_role)
 @commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
 async def players(ctx, name: str):
-    """Online Players List\n\nCommand Syntax: !players <all> or <shortname>"""
+    """[STAFF] Online Players List\n\nCommand Syntax: !players <all> or <shortname>"""
     if name == 'all':
         for server in server_list:
             await tools.display_players(ctx, server)
@@ -342,8 +348,8 @@ async def players(ctx, name: str):
 
 @bot.command()
 @commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
-async def network(ctx):
-    """List Servers in Network\n\nCommand Syntax: !network"""
+async def list(ctx):
+    """List Servers in Network\n\nCommand Syntax: !list"""
     embed = discord.Embed(colour=discord.Colour(0x3D85C6),
                           timestamp=datetime.datetime.now().astimezone())
     server_short = ''
@@ -384,7 +390,7 @@ async def report(ctx, player: str, category: str, details: str, location: str, t
 @bot.command()
 @commands.has_any_role(*admin_role)
 async def broadcast(ctx, name: str, message: str):
-    """ Server Broadcast \n\nCommand Syntax: !broadcast <all> or <shortname> '<message>'"""
+    """ [ADMIN] Server Broadcast \n\nCommand Syntax: !broadcast <all> or <shortname> '<message>'"""
     if name == 'all':
         for server in server_list:
             service_api_key = server.service_api_key
@@ -468,59 +474,79 @@ async def played(ctx, name: str, limit: int):
     if limit > 50:
         await ctx.send("Specified Limit Too High: 50 Max")
 
-#@bot.command()
-#@commands.has_any_role(*staff_role)
-#@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
-#async def wlview(ctx, name: str):
-#    """ Played Time Leaderboard \n\nCommand Syntax: !wlview [all][server] [limit]"""
-#    if name == 'all':
-#         for server in server_list:
-#             output = ""
-#             info = server.info
-#             embed = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
-#                                   url=server.server_url,
-#                                   description=server.address,
-#                                   timestamp=datetime.datetime.now().astimezone())
-#             embed.set_author(name='Server Whitelist', url=server.server_url,
-#                              icon_url=server.server_icon)
-#             embed.set_footer(text="Report Generated",
-#                              icon_url=server.server_icon)
-#
-#             for user in server.whitelist['data']:
-#                 output += '[PlaceHolder](https://omegax.cftools.de/user/{}) issued at {} by {}'.format(
-#                     user['cftools_id'],
-#                     time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(user['issued_at'])),
-#                     '[PlaceHolder](https://omegax.cftools.de/user/{})'.format(user['issued_by'])) + '\n'
-#             if len(output) != 0:
-#                 embed.add_field(name='Whitelist Entries', value=output)
-#             else:
-#                 embed.add_field(name='No Whitelist Entries', value='\u200b')
-#             await ctx.send(embed=embed)
-#             await asyncio.sleep(1)
-#     if name != 'all':
-#         output = ""
-#         found = False
-#         for server in server_list:
-#             if server.name == name:
-#                 found = True
-#                 info = server.info
-#                 embed = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
-#                                              url=server.server_url,
-#                                              description=server.address,
-#                                              timestamp=datetime.datetime.now().astimezone())
-#                 embed.set_author(name='Server Whitelist', url=server.server_url,
-#                                         icon_url=server.server_icon)
-#                 embed.set_footer(text="Report Generated",
-#                                         icon_url=server.server_icon)
-#
-#                 for user in server.whitelist['data']:
-#                     output += '[PlaceHolder](https://omegax.cftools.de/user/{}) issued at {} by {}'.format(user['cftools_id'],
-#                                                                                               time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(user['issued_at'])),
-#                                                                                                            '[PlaceHolder](https://omegax.cftools.de/user/{})'.format(user['issued_by'])) + '\n'
-#                 embed.add_field(name='Whitelist Entries', value=output)
-#                 await ctx.send(embed=embed)
-#         if found == False:
-#             await ctx.send('Error: Server Not Found')
+@bot.command()
+@commands.has_any_role(*moderator_role)
+@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
+async def wl(ctx, name: str):
+    """ [MODERATOR] Whitelist View\n\nSyntax: !wl <all> or <server>"""
+    if name == 'all':
+        for server in server_list:
+            output = ""
+            info = server.info
+            embed = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
+                                  url=server.server_url,
+                                  description=server.address,
+                                  timestamp=datetime.datetime.now().astimezone())
+            embed.set_author(name='Server Whitelist', url=server.server_url,
+                             icon_url=server.server_icon)
+            embed.set_footer(text="Report Generated",
+                             icon_url=server.server_icon)
+
+            count = 0
+            for user in server.whitelist['data']:
+                count += 1
+                wl_player = await get_player(user['cftools_id'], server.service_id, server.service_api_key)
+                print(wl_player)
+                wl_sponsor = await get_player(user['issued_by'], server.service_id, server.service_api_key)
+                print(wl_sponsor)
+                output += '{}. [{}](https://omegax.cftools.de/user/{}) issued at {} by {}'.format(str(count).rjust(2), wl_player['data']['aliases'][0], user['cftools_id'], time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(user['issued_at'])), '[{}](https://omegax.cftools.de/user/{})'.format(wl_sponsor['data']['aliases'][0], user['issued_by']) + '\n')
+            if len(output) == 0:
+                embed.add_field(name='No Whitelist Entries', value='\u200b')
+            else:
+                embed.add_field(name='Whitelist Entries', value=output)
+            await ctx.send(embed=embed)
+            await asyncio.sleep(1)
+    elif name != 'all':
+        output = ""
+        found = False
+        for server in server_list:
+            if server.name == name:
+                found = True
+                info = server.info
+                embed = discord.Embed(title=info['servername'][:57], colour=discord.Colour(0x3D85C6),
+                                             url=server.server_url,
+                                             description=server.address,
+                                             timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name='Server Whitelist', url=server.server_url,
+                                        icon_url=server.server_icon)
+                embed.set_footer(text="Report Generated",
+                                        icon_url=server.server_icon)
+                count = 0
+                for user in server.whitelist['data']:
+                    count += 1
+                    wl_player = await get_player(user['cftools_id'], server.service_id, server.service_api_key)
+                    wl_sponsor = await get_player(user['issued_by'], server.service_id, server.service_api_key)
+                    output += '{}. [{}](https://omegax.cftools.de/user/{}) issued at {} by {}'.format(str(count).rjust(2), wl_player['data']['aliases'][0], user['cftools_id'], time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(user['issued_at'])),'[{}](https://omegax.cftools.de/user/{})'.format(wl_sponsor['data']['aliases'][0], user['issued_by']) + '\n')
+                if len(output) != 0:
+                    embed.add_field(name='Whitelist Entries', value=output)
+                    await ctx.send(embed=embed)
+                elif len(output) == 0:
+                    embed.add_field(name='No Whitelist Entries', value='\u200b')
+                    await ctx.send(embed=embed)
+        if found == False:
+            await ctx.send('Error: Server Not Found')
+
+
+async def get_player(cftools_id: str, service_id: str, service_api_key: str):
+    data = {
+        'service_api_key': '{}'.format(service_api_key),
+        'identity_type': 'cftools_id',
+        'identity': '{}'.format(cftools_id)
+    }
+    r = requests.post('https://omegax.cftools.de/api/v1/playerinfo/{}'.format(service_id), headers=headers, data=data)
+    print(r.from_cache)
+    player_info = r.json()
+    return player_info
 
 
 

@@ -22,7 +22,7 @@ import datetime
 import discord
 from discord.ext import commands
 
-
+global api_count
 headers = {'contentType': 'application/x-www-form-urlencoded','User-Agent': 'CFTools ServiceAPI-Client'}
 
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='[%H:%M:%S]')
@@ -46,9 +46,10 @@ with open('config.json', 'r') as config_file:
     admin_role = tuple(config_data["permissions"]["admins"])
 
 server_list = []
+api_count = 0
 
 class Server(object):
-    def __init__(self, name=None, address=None, server_url=None, service_api_key=None, service_id=None, server_icon=None, info=None, players=None, kills=None, playtime=None):
+    def __init__(self, name=None, address=None, server_url=None, service_api_key=None, service_id=None, server_icon=None, info=None, players=None, kills=None, playtime=None, last_update=None):
         self.name = name
         self.address = address
         self.server_url = server_url
@@ -59,6 +60,7 @@ class Server(object):
         self.players = players
         self.kills = kills
         self.playtime = playtime
+        self.last_update = last_update
 
 
 async def fetch_api(session, url, data):
@@ -74,6 +76,7 @@ async def leaderboard_fetch_async():
     while True:
         tasks = []
         try:
+            global api_count
             async with aiohttp.ClientSession() as session:
                 for server in server_list:
                     tasks.append(fetch_api(session, "{}stats/{}".format(api_url, server.service_id),
@@ -82,6 +85,8 @@ async def leaderboard_fetch_async():
                     tasks.append(fetch_api(session, "{}stats/{}".format(api_url, server.service_id),
                                            {'service_api_key': str(server.service_api_key), 'order': 'descending',
                                             'stat_type': 'playtime'}))
+                    api_count += 2
+                    log.info("API Count: {} Server: {} LEADERBOARD".format(api_count, server.service_id))
                 results = await asyncio.gather(*tasks)
                 sub_list = [results[n:n + 2] for n in range(0, len(results), 2)]
                 index = 0
@@ -91,16 +96,17 @@ async def leaderboard_fetch_async():
                     server.playtime = api_return[1]
                     index += 1
             await session.close()
-            log.info("Server(s) Leaderboard Updated")
+            await asyncio.sleep(delayed_refresh)
         except Exception as error:
             log.info('API Fetch Failed:' + str(error))
-        await asyncio.sleep(delayed_refresh)
+
 
 
 async def status_fetch_async():
     while True:
         tasks = []
         try:
+            global api_count
             async with aiohttp.ClientSession() as session:
                 for server in server_list:
                     tasks.append(
@@ -109,6 +115,8 @@ async def status_fetch_async():
                     tasks.append(
                         fetch_api(session, "{}playerlist/{}".format(api_url, server.service_id),
                                   {'service_api_key': str(server.service_api_key)}))
+                    api_count += 2
+                    log.info("API Count: {} Server: {} INFO/PLAYER".format(api_count,server.service_id))
                 results = await asyncio.gather(*tasks)
                 sub_list = [results[n:n + 2] for n in range(0, len(results), 2)]
                 index = 0
@@ -118,7 +126,6 @@ async def status_fetch_async():
                     server.players = api_return[1]
                     index += 1
             await session.close()
-            log.info("Server(s) Status Updated")
             await asyncio.sleep(status_refresh)  # task runs every 60 seconds
         except Exception as error:
             log.info('API Fetch Failed:' + str(error))
@@ -135,8 +142,8 @@ async def initialize_servers():
         update.service_id = server['service_id']
         update.server_icon = server['server_icon']
         server_list.append(update)
-        bot.loop.create_task(status_fetch_async())
-        bot.loop.create_task(leaderboard_fetch_async())
+    bot.loop.create_task(status_fetch_async())
+    bot.loop.create_task(leaderboard_fetch_async())
 
 
 
@@ -191,7 +198,6 @@ async def rotate_activity():
         try:
             server = server_list[rotate_position]
             info = server.info
-            log.info("State Information:" + info['state'])
             if info['state'] == 'running':
                 player_activity = '{}: {}/{} Online'.format(server.name, info['current_players'], info['max_players'])
                 activity = discord.Game(name=player_activity)

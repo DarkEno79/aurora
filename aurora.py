@@ -23,6 +23,7 @@ import discord
 from discord.ext import commands
 
 global api_count
+global startup_time
 headers = {'contentType': 'application/x-www-form-urlencoded','User-Agent': 'CFTools ServiceAPI-Client'}
 
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='[%H:%M:%S]')
@@ -86,7 +87,6 @@ async def leaderboard_fetch_async():
                                            {'service_api_key': str(server.service_api_key), 'order': 'descending',
                                             'stat_type': 'playtime'}))
                     api_count += 2
-                    log.info("API Count: {} Server: {} LEADERBOARD".format(api_count, server.service_id))
                 results = await asyncio.gather(*tasks)
                 sub_list = [results[n:n + 2] for n in range(0, len(results), 2)]
                 index = 0
@@ -100,6 +100,12 @@ async def leaderboard_fetch_async():
         except Exception as error:
             log.info('API Fetch Failed:' + str(error))
 
+
+async def debug_log_api():
+    global api_count
+    while True:
+        log.info("API Count: {}".format(api_count))
+        await asyncio.sleep(60)
 
 
 async def status_fetch_async():
@@ -116,7 +122,6 @@ async def status_fetch_async():
                         fetch_api(session, "{}playerlist/{}".format(api_url, server.service_id),
                                   {'service_api_key': str(server.service_api_key)}))
                     api_count += 2
-                    log.info("API Count: {} Server: {} INFO/PLAYER".format(api_count,server.service_id))
                 results = await asyncio.gather(*tasks)
                 sub_list = [results[n:n + 2] for n in range(0, len(results), 2)]
                 index = 0
@@ -153,14 +158,20 @@ bot.add_cog(tools.CommandErrorHandler(bot))
 
 @bot.event
 async def on_ready():
+    global startup_time
     await initialize_servers()
     activity = discord.Game(name="!help for help")
     await bot.change_presence(status=discord.Status.online, activity=activity)
     bot_info = await bot.application_info()
     log.info("Aurora Discord Bot\nName: {}\nID: {}\nDescription: {}\nOwner: {}\nPublic: {}".format(bot_info.name,bot_info.id,bot_info.description,bot_info.owner,bot_info.bot_public))
+    startup_time = datetime.datetime.now()
     log.info("Bot Connected")
+    log.info("Initial API Init: {} calls".format(api_count))
+    log.info("SERVERINFO/PLAYERLIST Update: every {} seconds".format(status_refresh))
+    log.info("STATS Update: every {} seconds".format(delayed_refresh))
     await asyncio.sleep(10)
     bot.loop.create_task(rotate_activity())
+    bot.loop.create_task(debug_log_api())
 
 
 @bot.command()
@@ -450,6 +461,16 @@ async def played(ctx, name: str, limit: int):
                 await ctx.send('Server: ' + name + ' not found')
     if limit > 50:
         await ctx.send("Specified Limit Too High: 50 Max")
+
+@bot.command()
+@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
+async def api(ctx):
+    """ Displays Total API Calls """
+    global api_count
+    global startup_time
+    uptime = (datetime.datetime.now() - startup_time)
+    await ctx.send("Uptime: {}".format(uptime))
+    await ctx.send("Total CFTools API Calls: {}".format(api_count))
 
 
 bot.run(token)

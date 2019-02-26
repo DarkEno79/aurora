@@ -26,7 +26,7 @@ from discord.ext import commands
 
 class Server(object):
     def __init__(self, name=None, address=None, server_url=None, service_api_key=None, service_id=None, server_icon=None,
-                 info=None, players=None, kills=None, playtime=None, whitelist=None):
+                 info=None, players=None, kills=None, playtime=None):
         self.name = name
         self.address = address
         self.server_url = server_url
@@ -37,7 +37,6 @@ class Server(object):
         self.players = players
         self.kills = kills
         self.playtime = playtime
-        self.whitelist = whitelist
 
 
 async def display_status(ctx, server: object):

@@ -24,15 +24,6 @@ import logging
 import wmi
 import tailer
 
-# with open('DayZServer_x64.ADM', 'r') as reader:
-#     line = reader.readline()
-#     while line != '':  # The EOF char is an empty string
-#         if re.match("(.*)(is connected)(.*)", line):
-#             parsed = line.split(' ')
-#             print(parsed)
-#         line = reader.readline()
-#     reader.close()
-
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='[%H:%M:%S]')
 log = logging.getLogger()
 log.setLevel(logging.INFO)

@@ -16,13 +16,127 @@
 import tools
 import asyncio
 import json
-import logging
 import aiohttp
 import datetime
 import discord
 from discord.ext import commands
+import logging
+import wmi
+import tailer
+
+logging.basicConfig(format='%(asctime)s %(message)s', datefmt='[%H:%M:%S]')
+log = logging.getLogger()
+log.setLevel(logging.INFO)
+latest_adm = ''
+
+
+async def log_monitor():
+    log_name = 'DayZServer_x64.ADM'
+    log.info("Watching DayZServer_x64.ADM")
+    await adm_scan(log_name)
+
+
+async def adm_scan(log_name):
+    log_file = open(log_name)
+    log_file.seek(0, 2)  # Go to the end of the file
+    while True:
+        line = log_file.readline()
+        if not line:
+            await asyncio.sleep(0.1)  # Sleep briefly
+            continue
+        if 'is connected' in line:
+            parsed = line.split(' ')
+            if '"' in parsed[3] and '"' in parsed[4]:
+                player = parsed[3] + ' ' + parsed[4]
+                index = 4
+            else:
+                player = parsed[3]
+                index = 3
+            player = player.strip('"')
+            id = parsed[index + 3]
+            id = id.strip('(id=')
+            id = id.strip(')')
+            time = parsed[0]
+            channel = bot.get_channel(int(live_feed_channel))
+            live_connect = f'```CONNECT: {time} \nPlayer: {player} \nBUID: {id}```'
+            await channel.send(live_connect)
+        if 'died' in line:
+            parsed = line.split(' ')
+            if '"' in parsed[3] and '"' in parsed[4]:
+                player = parsed[3] + ' ' + parsed[4]
+                index = 4
+            else:
+                player = parsed[3]
+                index = 3
+            player = player.strip('"')
+            id = parsed[index + 1]
+            id = id.strip('(id=')
+            id = id.strip(')')
+            pos_x = parsed[index + 2].strip('pos=<')
+            pos_x = pos_x.strip(',')
+            pos_y = parsed[index + 3].strip(',')
+            pos_z = parsed[index + 4].strip('>)')
+            time = parsed[0]
+            water = parsed[index + 8]
+            energy = parsed[index + 10]
+            bleed_sources = parsed[index + 13]
+            channel = bot.get_channel(int(live_feed_channel))
+            live_feed = f'```DEATH: {time} \nPlayer: {player} \nBUID: {id} \nPos: <{pos_x}, {pos_y}, {pos_z}>\nWater: {water}\nEnergy: {energy}\nBleed Sources: {bleed_sources}```'
+            await channel.send(live_feed)
+            log.info("Death: %s" %line)
+        if 'disconnected' in line:
+            log.info("Disconnection: %s" %line)
+        if 'suicide' in line:
+            log.info("Suicide: %s" %line)
+        if 'hit' in line:
+            log.info("HIT: %s" %line)
+        if 'killed' in line:
+            parsed = line.split(' ')
+            if '"' in parsed[3] and '"' in parsed[4]:
+                player = parsed[3] + ' ' + parsed[4]
+                if '"' in parsed[12] and '"' in parsed[13]:
+                    killer = parsed[12] + ' ' + parsed[13]
+                    buid_player = str(parsed[5])
+                    buid_player = buid_player.strip('(id=')
+                    buid_player = buid_player.strip(')')
+                    buid_killer = str(parsed[14])
+                    buid_killer = buid_killer.replace('(id=', '')
+                    buid_killer = buid_killer.replace(')', '')
+                    player = player.replace('"', '')
+                    killer = killer.replace('"', '')
+                    pos_x_player = parsed[6].replace('pos=<', '')
+                    pos_x_player = pos_x_player.replace(',', '')
+                    pos_y_player = parsed[7].replace(',', '')
+                    pos_z_player = parsed[8].replace('>)', '')
+                    pos_x_killer = parsed[15].replace('pos=<', '')
+                    pos_x_killer = pos_x_killer.replace(',', '')
+                    pos_y_killer = parsed[16].replace(',', '')
+                    pos_z_killer = parsed[17].replace('>)', '')
+                    weapon = parsed[19:]
+                    time = parsed[0]
+                    channel = bot.get_channel(int(live_feed_channel))
+                    await channel.send("```{} | Player {} BUID {} Position {},{},{} KILLED\nby Player {} BUID {} Position <{}, {}, {}>) with {}```".format(time, player, buid_player, pos_x_player, pos_y_player, pos_z_player, killer, buid_killer, pos_x_killer, pos_y_killer, pos_z_killer, weapon))
+            else:
+                player = parsed[3]
+                player = player.replace('"', '')
+                id = parsed[4]
+                id = id.replace('(id=', '')
+                id = id.replace(')', '')
+                pos_x = parsed[5].replace('pos=<', '')
+                pos_x = pos_x.replace(',', '')
+                pos_y = parsed[6].replace(',', '')
+                pos_z = parsed[7].replace('>)', '')
+                time = parsed[0]
+                water = parsed[11]
+                energy = parsed[13]
+                bleed_sources = parsed[16]
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send("```DEATH: {} \nPlayer: {} \nBUID: {} \nPos: <{}, {}, {}>\nWater: {}\nEnergy: {}\nBleed Sources: {}```".format(time, player, id, pos_x, pos_y, pos_z, water, energy, bleed_sources))
+            log.info("Killed: %s" %line)
 
 global api_count
+global startup_time
+startup_time = datetime.datetime.now()
 headers = {'contentType': 'application/x-www-form-urlencoded','User-Agent': 'CFTools ServiceAPI-Client'}
 
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='[%H:%M:%S]')
@@ -44,9 +158,11 @@ with open('config.json', 'r') as config_file:
     staff_role = tuple(config_data['permissions']['staff'])
     moderator_role = tuple(config_data['permissions']['moderators'])
     admin_role = tuple(config_data["permissions"]["admins"])
+    live_feed_channel = config_data['live_feed_channel']
 
 server_list = []
 api_count = 0
+
 
 class Server(object):
     def __init__(self, name=None, address=None, server_url=None, service_api_key=None, service_id=None, server_icon=None, info=None, players=None, kills=None, playtime=None, last_update=None):
@@ -86,7 +202,6 @@ async def leaderboard_fetch_async():
                                            {'service_api_key': str(server.service_api_key), 'order': 'descending',
                                             'stat_type': 'playtime'}))
                     api_count += 2
-                    log.info("API Count: {} Server: {} LEADERBOARD".format(api_count, server.service_id))
                 results = await asyncio.gather(*tasks)
                 sub_list = [results[n:n + 2] for n in range(0, len(results), 2)]
                 index = 0
@@ -100,6 +215,12 @@ async def leaderboard_fetch_async():
         except Exception as error:
             log.info('API Fetch Failed:' + str(error))
 
+
+async def debug_log_api():
+    global api_count
+    while True:
+        log.info("API Count: {}".format(api_count))
+        await asyncio.sleep(60)
 
 
 async def status_fetch_async():
@@ -116,7 +237,6 @@ async def status_fetch_async():
                         fetch_api(session, "{}playerlist/{}".format(api_url, server.service_id),
                                   {'service_api_key': str(server.service_api_key)}))
                     api_count += 2
-                    log.info("API Count: {} Server: {} INFO/PLAYER".format(api_count,server.service_id))
                 results = await asyncio.gather(*tasks)
                 sub_list = [results[n:n + 2] for n in range(0, len(results), 2)]
                 index = 0
@@ -153,14 +273,35 @@ bot.add_cog(tools.CommandErrorHandler(bot))
 
 @bot.event
 async def on_ready():
+    global startup_time
     await initialize_servers()
     activity = discord.Game(name="!help for help")
     await bot.change_presence(status=discord.Status.online, activity=activity)
     bot_info = await bot.application_info()
     log.info("Aurora Discord Bot\nName: {}\nID: {}\nDescription: {}\nOwner: {}\nPublic: {}".format(bot_info.name,bot_info.id,bot_info.description,bot_info.owner,bot_info.bot_public))
+    startup_time = datetime.datetime.now()
     log.info("Bot Connected")
+    log.info("Initial API Init: {} calls".format(api_count))
+    log.info("SERVERINFO/PLAYERLIST Update: every {} seconds".format(status_refresh))
+    log.info("STATS Update: every {} seconds".format(delayed_refresh))
     await asyncio.sleep(10)
     bot.loop.create_task(rotate_activity())
+    bot.loop.create_task(debug_log_api())
+    bot.loop.create_task(log_monitor())
+    computer = wmi.WMI()
+    computer_info = computer.Win32_ComputerSystem()[0]
+    os_info = computer.Win32_OperatingSystem()[0]
+    proc_info = computer.Win32_Processor()[0]
+    gpu_info = computer.Win32_VideoController()[0]
+
+    os_name = os_info.Name.encode('utf-8').split(b'|')[0]
+    os_version = ' '.join([os_info.Version, os_info.BuildNumber])
+    system_ram = float(os_info.TotalVisibleMemorySize) / 1048576  # KB to GB
+    log.info('OS Name: {0}'.format(os_name))
+    log.info('OS Version: {0}'.format(os_version))
+    log.info('CPU: {0}'.format(proc_info.Name))
+    log.info('RAM: {0} GB'.format(system_ram))
+    log.info('Graphics Card: {0}'.format(gpu_info.Name))
 
 
 @bot.command()
@@ -185,6 +326,7 @@ async def reload(ctx):
         staff_role = tuple(config_data['permissions']['staff'])
         moderator_role = tuple(config_data['permissions']['moderators'])
         admin_role = tuple(config_data["permissions"]["admins"])
+        live_feed_channel = config_data['live_feed_channel']
     try:
         await initialize_servers()
     except Exception as error:
@@ -222,6 +364,16 @@ async def rotate_activity():
             pass
         await asyncio.sleep(activity_refresh)
 
+@bot.command()
+@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
+@commands.has_any_role(*admin_role)
+async def log_view(ctx, log_file: str, range: int):
+    """[ADMIN] Server Log Viewer"""
+    # if log_file == 'adm':
+    #     latest = tailer.tail(open('DayZServer_x64.ADM'), range + 1)
+    #     for i, a in enumerate(latest):
+    #         log = '```' + a + '```'
+    #         await ctx.send(log)
 
 @bot.command()
 @commands.cooldown(1, cooldown_user, commands.BucketType.user)
@@ -450,6 +602,16 @@ async def played(ctx, name: str, limit: int):
                 await ctx.send('Server: ' + name + ' not found')
     if limit > 50:
         await ctx.send("Specified Limit Too High: 50 Max")
+
+@bot.command()
+@commands.cooldown(1, cooldown_channel, commands.BucketType.channel)
+async def api(ctx):
+    """ Displays Total API Calls """
+    global api_count
+    global startup_time
+    uptime = (datetime.datetime.now() - startup_time)
+    await ctx.send("Uptime: {}".format(uptime))
+    await ctx.send("Total CFTools API Calls: {}".format(api_count))
 
 
 bot.run(token)

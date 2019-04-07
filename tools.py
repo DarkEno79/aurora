@@ -26,7 +26,7 @@ from discord.ext import commands
 
 class Server(object):
     def __init__(self, name=None, address=None, server_url=None, service_api_key=None, service_id=None, server_icon=None,
-                 info=None, players=None, kills=None, playtime=None, whitelist=None):
+                 info=None, players=None, kills=None, playtime=None):
         self.name = name
         self.address = address
         self.server_url = server_url
@@ -37,7 +37,8 @@ class Server(object):
         self.players = players
         self.kills = kills
         self.playtime = playtime
-        self.whitelist = whitelist
+
+
 
 
 async def display_status(ctx, server: object):
@@ -562,7 +563,8 @@ async def display_played(ctx, limit, server):
 # COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-class CommandErrorHandler:
+
+class CommandErrorHandler(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 

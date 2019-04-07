@@ -12,7 +12,12 @@
         * 1st/3rd Person Status
         * Map
         * Hive
-    **Activity Cycling
+	* Permissions System
+		* 3 Tiers
+			* Staff
+			* Moderators
+			* Administrator
+    * Activity Cycling
         * Server Player Count
         * Status (Online, Not Available, Idle)
         * User Configurable
@@ -64,6 +69,10 @@
 * Requirements:
     * [Discord.py 1.0.0a](https://github.com/Rapptz/discord.py/tree/rewrite) 
         * Discord Python Library
+    * [Requests](http://docs.python-requests.org/en/master/)
+    	* Requests Library
+    * [Requests-Cache](https://pypi.org/project/requests-cache/)
+    	* Caching library for requests
     * [AIOHTTP](https://aiohttp.readthedocs.io/en/stable)
         * Asynchronous HTTP connections
     * [ASyncIO](https://docs.python.org/3/library/asyncio.html)
@@ -72,6 +81,9 @@
 * Installation Instructions:
     * Install Python 3 (3.4+ Required)
         * https://www.python.org/downloads/
+
+	* Install Git
+		* https://git-scm.com/downloads
     
     * Create a Discord Bot
         * https://discordpy.readthedocs.io/en/rewrite/discord.html
@@ -82,6 +94,8 @@
         It will install required dependencies automatically.
 
     * Install other required libraries
+	* ``` python -m pip install requests ```
+	* ``` python -m pip install requests-cache ```
         * ``` python -m pip install asyncio ```
         * ``` python -m pip install aiohttp ```
     
@@ -121,4 +135,5 @@
     * Save as config.json
     
     * Run Bot:
-        ``` python aurora.py ```
+		python aurora.py
+

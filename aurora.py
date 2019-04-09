@@ -41,7 +41,7 @@ death = r"(.*) \| Player \"(.*)\" \(DEAD\) \(id=(.*) pos=<(.*), (.*), (.*)>\) di
 suicide = r"(.*) \| Player \'(.*)\' \(id=(.*)\) committed suicide\."
 wolf_attack = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)\] hit by Wolf into (.*) for (.*) damage \(MeleeWolf\)"
 chat = r"(.*) \| \[(.*) (.*)\] \[Chat\] (.*)\(steamid=(.*), bisid=(.*)\) (.*)"
-melee = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)\] hit by Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\) into (.*) for (.*) damage \(MeleeFist\)"
+melee = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)\] hit by Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\) into (.*) for (.*) damage (.*)"
 
 async def log_monitor():
     log_name = './profiles/DayZServer_x64.ADM'
@@ -58,17 +58,12 @@ async def adm_scan(log_name):
             await asyncio.sleep(0.1)  # Sleep briefly
             continue
         else:
-            output = await parse_adm(line)
-            channel = bot.get_channel(int(live_feed_channel))
-            #if output != None:
-            #    await channel.send(output)
-
+            await parse_adm(line)
+            continue
 
 async def parse_adm(line):
     if 'is connected' in line:
         m = re.search(connected, line, re.MULTILINE)
-        #output = f'```[{m.group(1)}] CONNECT: {m.group(2)}\nBUID: {m.group(3)}```'
-        #return output
         embed = discord.Embed(colour=discord.Colour(0x7ED321),
                               timestamp=datetime.datetime.now().astimezone())
         embed.set_author(name=f'{m.group(2)} has connected.')
@@ -78,7 +73,6 @@ async def parse_adm(line):
         await channel.send(embed=embed)
     if 'died' in line:
         m = re.search(death, line, re.MULTILINE)
-        #output = f'```css\n[{m.group(1)}] DEATH: {m.group(2)}\nID: {m.group(3)}\nPosition: <{m.group(4)}, {m.group(5)}, {m.group(6)}>\nWater: {m.group(7)} Energy: {m.group(8)} Bleed Sources: {m.group(9)}```'
         embed = discord.Embed(colour=discord.Colour(0xD0021B),
                               timestamp=datetime.datetime.now().astimezone())
         embed.set_author(name=f'{m.group(2)} has died.')
@@ -90,11 +84,8 @@ async def parse_adm(line):
         embed.add_field(name="Bleed Sources", value=f'{m.group(9)}')
         channel = bot.get_channel(int(live_feed_channel))
         await channel.send(embed=embed)
-        #return output
     if 'disconnected' in line:
         m = re.match(disconnected, line, re.MULTILINE)
-        #output = f'```** DISCONNECT **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}```'
-        #return output
         embed = discord.Embed(colour=discord.Colour(0x4A90E2),
                               timestamp=datetime.datetime.now().astimezone())
         embed.set_author(name=f'{m.group(2)} has disconnected.')
@@ -104,8 +95,6 @@ async def parse_adm(line):
         await channel.send(embed=embed)
     if 'suicide' in line:
         m = re.match(suicide, line, re.MULTILINE)
-        #output = f'```** SUICIDE **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}```'
-        #return output
         embed = discord.Embed(colour=discord.Colour(0xF8E71C),
                               timestamp=datetime.datetime.now().astimezone())
         embed.set_author(name=f'{m.group(2)} has committed suicide.')
@@ -132,8 +121,6 @@ async def parse_adm(line):
     if 'hit by Player' in line:
         log.info("HIT: %s" % line)
         m = re.match(hit, line, re.MULTILINE)
-        #output = f'```** HIT **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}\nLocation: <{m.group(4)}, {m.group(5)}, {m.group(6)}>\nHealth: {m.group(7)}\n\nHIT by\n\nPlayer: {m.group(8)}\nID: {m.group(9)}\nLocation: <{m.group(10)}, {m.group(11)}, {m.group(12)}>\nTarget: {m.group(13)}\nDamage: {m.group(14)}\nAmmunition: {m.group(15)}\nWeapon: {m.group(16)}\nDistance: {m.group(17)} meters```'
-        #return output
         embed = discord.Embed(colour=discord.Colour(0xD0021B),
                               timestamp=datetime.datetime.now().astimezone())
         embed.set_author(name=f'{m.group(2)} has been hit!')
@@ -153,8 +140,6 @@ async def parse_adm(line):
         await channel.send(embed=embed)
     if 'killed' in line:
         m = re.match(killed, line, re.MULTILINE)
-        #output = f'```** DEATH **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}\nLocation: <{m.group(4)}, {m.group(5)}, {m.group(6)}>\n\nKILLED by\n\nPlayer: {m.group(7)}\nID: {m.group(8)}\nLocation: <{m.group(9)}, {m.group(10)}, {m.group(11)}>\nWeapon: {m.group(12)}\nDistance: {m.group(13)} meters```'
-        #return output
         embed = discord.Embed(colour=discord.Colour(0xD0021B),
                               timestamp=datetime.datetime.now().astimezone())
         embed.set_author(name=f'{m.group(2)} has been killed!')
@@ -171,8 +156,6 @@ async def parse_adm(line):
     if 'unconscious' in line:
         log.info("UNCONSCIOUS: %s" % line)
         m = re.match(unconscious, line, re.MULTILINE)
-        #output = f'```** UNCONSCIOUS **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}\nLocation: <{m.group(4)}, {m.group(5)}, {m.group(6)}>```'
-        #return output
         embed = discord.Embed(colour=discord.Colour(0xD0021B),
                               timestamp=datetime.datetime.now().astimezone())
         embed.set_author(name=f'{m.group(2)} has fell unconscious.')
@@ -184,8 +167,6 @@ async def parse_adm(line):
     if 'Wolf' in line:
         log.info("WOLF ATTACK: %s" % line)
         m = re.match(wolf_attack, line, re.MULTILINE)
-        #output = f'```** HIT **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}\nLocation: <{m.group(4)}, {m.group(5)}, {m.group(6)}>\nHealth: {m.group(7)}\n\nHIT by WOLF\n\nTarget: {m.group(8)}\nDamage: {m.group(9)}```'
-        #return output
         embed = discord.Embed(colour=discord.Colour(0xD0021B),
                               timestamp=datetime.datetime.now().astimezone())
         embed.set_author(name=f'{m.group(2)} has been attacked by Wolves!')

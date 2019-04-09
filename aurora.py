@@ -21,6 +21,7 @@ import datetime
 import discord
 from discord.ext import commands
 import logging
+import re
 import wmi
 import tailer
 
@@ -29,9 +30,21 @@ log = logging.getLogger()
 log.setLevel(logging.INFO)
 latest_adm = ''
 
+# REGEX for log scanner
+
+hit = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)] hit by Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\) into (.*) for (.*) damage \((.*)\) with (.*) from (.*) meters"
+killed = r"(.*) \| Player \"(.*)\" \(DEAD\) \(id=(.*) pos=<(.*), (.*), (.*)>\) killed by Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\) with (.*) from (.*) meters"
+connected = r"(.*) \| Player \"(.*)\" is connected \(id=(.*)\)"
+disconnected = r"(.*) \| Player \"(.*)\"\(id=(.*)\) has been disconnected"
+unconscious = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\) is unconscious"
+death = r"(.*) \| Player \"(.*)\" \(DEAD\) \(id=(.*) pos=<(.*), (.*), (.*)>\) died\. Stats> Water: (.*) Energy: (.*) Bleed sources: (.*)"
+suicide = r"(.*) \| Player \'(.*)\' \(id=(.*)\) committed suicide\."
+wolf_attack = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)\] hit by Wolf into (.*) for (.*) damage \(MeleeWolf\)"
+chat = r"(.*) \| \[(.*) (.*)\] \[Chat\] (.*)\(steamid=(.*), bisid=(.*)\) (.*)"
+melee = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)\] hit by Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\) into (.*) for (.*) damage \(MeleeFist\)"
 
 async def log_monitor():
-    log_name = 'DayZServer_x64.ADM'
+    log_name = './profiles/DayZServer_x64.ADM'
     log.info("Watching DayZServer_x64.ADM")
     await adm_scan(log_name)
 
@@ -44,95 +57,158 @@ async def adm_scan(log_name):
         if not line:
             await asyncio.sleep(0.1)  # Sleep briefly
             continue
-        if 'is connected' in line:
-            parsed = line.split(' ')
-            if '"' in parsed[3] and '"' in parsed[4]:
-                player = parsed[3] + ' ' + parsed[4]
-                index = 4
-            else:
-                player = parsed[3]
-                index = 3
-            player = player.strip('"')
-            id = parsed[index + 3]
-            id = id.strip('(id=')
-            id = id.strip(')')
-            time = parsed[0]
+        else:
+            output = await parse_adm(line)
             channel = bot.get_channel(int(live_feed_channel))
-            live_connect = f'```CONNECT: {time} \nPlayer: {player} \nBUID: {id}```'
-            await channel.send(live_connect)
-        if 'died' in line:
-            parsed = line.split(' ')
-            if '"' in parsed[3] and '"' in parsed[4]:
-                player = parsed[3] + ' ' + parsed[4]
-                index = 4
-            else:
-                player = parsed[3]
-                index = 3
-            player = player.strip('"')
-            id = parsed[index + 1]
-            id = id.strip('(id=')
-            id = id.strip(')')
-            pos_x = parsed[index + 2].strip('pos=<')
-            pos_x = pos_x.strip(',')
-            pos_y = parsed[index + 3].strip(',')
-            pos_z = parsed[index + 4].strip('>)')
-            time = parsed[0]
-            water = parsed[index + 8]
-            energy = parsed[index + 10]
-            bleed_sources = parsed[index + 13]
-            channel = bot.get_channel(int(live_feed_channel))
-            live_feed = f'```DEATH: {time} \nPlayer: {player} \nBUID: {id} \nPos: <{pos_x}, {pos_y}, {pos_z}>\nWater: {water}\nEnergy: {energy}\nBleed Sources: {bleed_sources}```'
-            await channel.send(live_feed)
-            log.info("Death: %s" %line)
-        if 'disconnected' in line:
-            log.info("Disconnection: %s" %line)
-        if 'suicide' in line:
-            log.info("Suicide: %s" %line)
-        if 'hit' in line:
-            log.info("HIT: %s" %line)
-        if 'killed' in line:
-            parsed = line.split(' ')
-            if '"' in parsed[3] and '"' in parsed[4]:
-                player = parsed[3] + ' ' + parsed[4]
-                if '"' in parsed[12] and '"' in parsed[13]:
-                    killer = parsed[12] + ' ' + parsed[13]
-                    buid_player = str(parsed[5])
-                    buid_player = buid_player.strip('(id=')
-                    buid_player = buid_player.strip(')')
-                    buid_killer = str(parsed[14])
-                    buid_killer = buid_killer.replace('(id=', '')
-                    buid_killer = buid_killer.replace(')', '')
-                    player = player.replace('"', '')
-                    killer = killer.replace('"', '')
-                    pos_x_player = parsed[6].replace('pos=<', '')
-                    pos_x_player = pos_x_player.replace(',', '')
-                    pos_y_player = parsed[7].replace(',', '')
-                    pos_z_player = parsed[8].replace('>)', '')
-                    pos_x_killer = parsed[15].replace('pos=<', '')
-                    pos_x_killer = pos_x_killer.replace(',', '')
-                    pos_y_killer = parsed[16].replace(',', '')
-                    pos_z_killer = parsed[17].replace('>)', '')
-                    weapon = parsed[19:]
-                    time = parsed[0]
-                    channel = bot.get_channel(int(live_feed_channel))
-                    await channel.send("```{} | Player {} BUID {} Position {},{},{} KILLED\nby Player {} BUID {} Position <{}, {}, {}>) with {}```".format(time, player, buid_player, pos_x_player, pos_y_player, pos_z_player, killer, buid_killer, pos_x_killer, pos_y_killer, pos_z_killer, weapon))
-            else:
-                player = parsed[3]
-                player = player.replace('"', '')
-                id = parsed[4]
-                id = id.replace('(id=', '')
-                id = id.replace(')', '')
-                pos_x = parsed[5].replace('pos=<', '')
-                pos_x = pos_x.replace(',', '')
-                pos_y = parsed[6].replace(',', '')
-                pos_z = parsed[7].replace('>)', '')
-                time = parsed[0]
-                water = parsed[11]
-                energy = parsed[13]
-                bleed_sources = parsed[16]
-                channel = bot.get_channel(int(live_feed_channel))
-                await channel.send("```DEATH: {} \nPlayer: {} \nBUID: {} \nPos: <{}, {}, {}>\nWater: {}\nEnergy: {}\nBleed Sources: {}```".format(time, player, id, pos_x, pos_y, pos_z, water, energy, bleed_sources))
-            log.info("Killed: %s" %line)
+            #if output != None:
+            #    await channel.send(output)
+
+
+async def parse_adm(line):
+    if 'is connected' in line:
+        m = re.search(connected, line, re.MULTILINE)
+        #output = f'```[{m.group(1)}] CONNECT: {m.group(2)}\nBUID: {m.group(3)}```'
+        #return output
+        embed = discord.Embed(colour=discord.Colour(0x7ED321),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has connected.')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+    if 'died' in line:
+        m = re.search(death, line, re.MULTILINE)
+        #output = f'```css\n[{m.group(1)}] DEATH: {m.group(2)}\nID: {m.group(3)}\nPosition: <{m.group(4)}, {m.group(5)}, {m.group(6)}>\nWater: {m.group(7)} Energy: {m.group(8)} Bleed Sources: {m.group(9)}```'
+        embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has died.')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
+        embed.add_field(name="Water", value=f'{m.group(7)}')
+        embed.add_field(name="Energy", value=f'{m.group(8)}')
+        embed.add_field(name="Bleed Sources", value=f'{m.group(9)}')
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+        #return output
+    if 'disconnected' in line:
+        m = re.match(disconnected, line, re.MULTILINE)
+        #output = f'```** DISCONNECT **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}```'
+        #return output
+        embed = discord.Embed(colour=discord.Colour(0x4A90E2),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has disconnected.')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+    if 'suicide' in line:
+        m = re.match(suicide, line, re.MULTILINE)
+        #output = f'```** SUICIDE **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}```'
+        #return output
+        embed = discord.Embed(colour=discord.Colour(0xF8E71C),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has committed suicide.')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+    if 'MeleeFist' in line:
+        m = re.match(melee, line, re.MULTILINE)
+        embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has been hit!')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
+        embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
+        embed.add_field(name="Attacker", value=f'{m.group(8)}', inline=False)
+        embed.add_field(name="ID", value=f'{m.group(9)}', inline=False)
+        embed.add_field(name="Position", value=f'<{m.group(10)} , {m.group(11)} , {m.group(12)}>', inline=True)
+        embed.add_field(name="Target", value=f'{m.group(13)}')
+        embed.add_field(name="Damage", value=f'{m.group(14)}')
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+    if 'hit by Player' in line:
+        log.info("HIT: %s" % line)
+        m = re.match(hit, line, re.MULTILINE)
+        #output = f'```** HIT **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}\nLocation: <{m.group(4)}, {m.group(5)}, {m.group(6)}>\nHealth: {m.group(7)}\n\nHIT by\n\nPlayer: {m.group(8)}\nID: {m.group(9)}\nLocation: <{m.group(10)}, {m.group(11)}, {m.group(12)}>\nTarget: {m.group(13)}\nDamage: {m.group(14)}\nAmmunition: {m.group(15)}\nWeapon: {m.group(16)}\nDistance: {m.group(17)} meters```'
+        #return output
+        embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has been hit!')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
+        embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
+        embed.add_field(name="Attacker", value=f'{m.group(8)}', inline=False)
+        embed.add_field(name="ID", value=f'{m.group(9)}', inline=False)
+        embed.add_field(name="Position", value=f'<{m.group(10)} , {m.group(11)} , {m.group(12)}>', inline=True)
+        embed.add_field(name="Target", value=f'{m.group(13)}')
+        embed.add_field(name="Damage", value=f'{m.group(14)}')
+        embed.add_field(name="Ammo", value=f'{m.group(15)}')
+        embed.add_field(name="Weapon", value=f'{m.group(16)}')
+        embed.add_field(name="Range", value=f'{m.group(17)} meters')
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+    if 'killed' in line:
+        m = re.match(killed, line, re.MULTILINE)
+        #output = f'```** DEATH **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}\nLocation: <{m.group(4)}, {m.group(5)}, {m.group(6)}>\n\nKILLED by\n\nPlayer: {m.group(7)}\nID: {m.group(8)}\nLocation: <{m.group(9)}, {m.group(10)}, {m.group(11)}>\nWeapon: {m.group(12)}\nDistance: {m.group(13)} meters```'
+        #return output
+        embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has been killed!')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
+        embed.add_field(name="Killer", value=f'{m.group(7)}', inline=False)
+        embed.add_field(name="ID", value=f'{m.group(8)}', inline=False)
+        embed.add_field(name="Position", value=f'<{m.group(9)} , {m.group(10)} , {m.group(11)}>', inline=True)
+        embed.add_field(name="Weapon", value=f'{m.group(12)}')
+        embed.add_field(name="Range", value=f'{m.group(13)} meters')
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+    if 'unconscious' in line:
+        log.info("UNCONSCIOUS: %s" % line)
+        m = re.match(unconscious, line, re.MULTILINE)
+        #output = f'```** UNCONSCIOUS **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}\nLocation: <{m.group(4)}, {m.group(5)}, {m.group(6)}>```'
+        #return output
+        embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has fell unconscious.')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+    if 'Wolf' in line:
+        log.info("WOLF ATTACK: %s" % line)
+        m = re.match(wolf_attack, line, re.MULTILINE)
+        #output = f'```** HIT **\n\nTime: {m.group(1)}\nPlayer: {m.group(2)}\nID: {m.group(3)}\nLocation: <{m.group(4)}, {m.group(5)}, {m.group(6)}>\nHealth: {m.group(7)}\n\nHIT by WOLF\n\nTarget: {m.group(8)}\nDamage: {m.group(9)}```'
+        #return output
+        embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(2)} has been attacked by Wolves!')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(3)}')
+        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
+        embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
+        embed.add_field(name="Target", value=f'{m.group(8)}')
+        embed.add_field(name="Damage", value=f'{m.group(9)}')
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+    if 'Chat' in line:
+        log.info(line)
+        m = re.match(chat, line, re.MULTILINE)
+        embed = discord.Embed(colour=discord.Colour(0xF5A623),
+                              timestamp=datetime.datetime.now().astimezone())
+        embed.set_author(name=f'{m.group(4)}')
+        embed.set_footer(text="Entry Created")
+        embed.add_field(name="BUID", value=f'{m.group(6)}', inline=False)
+        embed.add_field(name="Message", value=f'{m.group(7)}', inline=False)
+        channel = bot.get_channel(int(live_feed_channel))
+        await channel.send(embed=embed)
+
 
 global api_count
 global startup_time
@@ -369,11 +445,12 @@ async def rotate_activity():
 @commands.has_any_role(*admin_role)
 async def log_view(ctx, log_file: str, range: int):
     """[ADMIN] Server Log Viewer"""
-    # if log_file == 'adm':
-    #     latest = tailer.tail(open('DayZServer_x64.ADM'), range + 1)
-    #     for i, a in enumerate(latest):
-    #         log = '```' + a + '```'
-    #         await ctx.send(log)
+    if log_file == 'adm':
+        latest = tailer.tail(open('DayZServer_x64.ADM'), range)
+        for i, a in enumerate(latest):
+            output = parse_adm(a)
+            if output != None:
+                await ctx.send(output)
 
 @bot.command()
 @commands.cooldown(1, cooldown_user, commands.BucketType.user)

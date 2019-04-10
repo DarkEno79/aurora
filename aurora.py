@@ -22,7 +22,6 @@ import discord
 from discord.ext import commands
 import logging
 import re
-import wmi
 import tailer
 
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='[%H:%M:%S]')
@@ -42,6 +41,7 @@ suicide = r"(.*) \| Player \'(.*)\' \(id=(.*)\) committed suicide\."
 wolf_attack = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)\] hit by Wolf into (.*) for (.*) damage \(MeleeWolf\)"
 chat = r"(.*) \| \[(.*) (.*)\] \[Chat\] (.*)\(steamid=(.*), bisid=(.*)\) (.*)"
 melee = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)\] hit by Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\) into (.*) for (.*) damage (.*)"
+zombie_kill = r"(.*) \| Player \"(.*)\" \(DEAD\) \(id=(.*) pos=<(.*), (.*), (.*)>\) killed by (.*)"
 
 async def log_monitor():
     log_name = './profiles/DayZServer_x64.ADM'
@@ -58,137 +58,160 @@ async def adm_scan(log_name):
             await asyncio.sleep(0.1)  # Sleep briefly
             continue
         else:
-            await parse_adm(line)
+            await parse_log(line)
             continue
 
-async def parse_adm(line):
-    if 'is connected' in line:
-        m = re.search(connected, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0x7ED321),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has connected.')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'died' in line:
-        m = re.search(death, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0xD0021B),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has died.')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
-        embed.add_field(name="Water", value=f'{m.group(7)}')
-        embed.add_field(name="Energy", value=f'{m.group(8)}')
-        embed.add_field(name="Bleed Sources", value=f'{m.group(9)}')
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'disconnected' in line:
-        m = re.match(disconnected, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0x4A90E2),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has disconnected.')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'suicide' in line:
-        m = re.match(suicide, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0xF8E71C),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has committed suicide.')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'MeleeFist' in line:
-        m = re.match(melee, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0xD0021B),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has been hit!')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
-        embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
-        embed.add_field(name="Attacker", value=f'{m.group(8)}', inline=False)
-        embed.add_field(name="ID", value=f'{m.group(9)}', inline=False)
-        embed.add_field(name="Position", value=f'<{m.group(10)} , {m.group(11)} , {m.group(12)}>', inline=True)
-        embed.add_field(name="Target", value=f'{m.group(13)}')
-        embed.add_field(name="Damage", value=f'{m.group(14)}')
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'hit by Player' in line:
-        log.info("HIT: %s" % line)
-        m = re.match(hit, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0xD0021B),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has been hit!')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
-        embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
-        embed.add_field(name="Attacker", value=f'{m.group(8)}', inline=False)
-        embed.add_field(name="ID", value=f'{m.group(9)}', inline=False)
-        embed.add_field(name="Position", value=f'<{m.group(10)} , {m.group(11)} , {m.group(12)}>', inline=True)
-        embed.add_field(name="Target", value=f'{m.group(13)}')
-        embed.add_field(name="Damage", value=f'{m.group(14)}')
-        embed.add_field(name="Ammo", value=f'{m.group(15)}')
-        embed.add_field(name="Weapon", value=f'{m.group(16)}')
-        embed.add_field(name="Range", value=f'{m.group(17)} meters')
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'killed' in line:
-        m = re.match(killed, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0xD0021B),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has been killed!')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
-        embed.add_field(name="Killer", value=f'{m.group(7)}', inline=False)
-        embed.add_field(name="ID", value=f'{m.group(8)}', inline=False)
-        embed.add_field(name="Position", value=f'<{m.group(9)} , {m.group(10)} , {m.group(11)}>', inline=True)
-        embed.add_field(name="Weapon", value=f'{m.group(12)}')
-        embed.add_field(name="Range", value=f'{m.group(13)} meters')
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'unconscious' in line:
-        log.info("UNCONSCIOUS: %s" % line)
-        m = re.match(unconscious, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0xD0021B),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has fell unconscious.')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'Wolf' in line:
-        log.info("WOLF ATTACK: %s" % line)
-        m = re.match(wolf_attack, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0xD0021B),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(2)} has been attacked by Wolves!')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(3)}')
-        embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
-        embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
-        embed.add_field(name="Target", value=f'{m.group(8)}')
-        embed.add_field(name="Damage", value=f'{m.group(9)}')
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
-    if 'Chat' in line:
-        log.info(line)
-        m = re.match(chat, line, re.MULTILINE)
-        embed = discord.Embed(colour=discord.Colour(0xF5A623),
-                              timestamp=datetime.datetime.now().astimezone())
-        embed.set_author(name=f'{m.group(4)}')
-        embed.set_footer(text="Entry Created")
-        embed.add_field(name="BUID", value=f'{m.group(6)}', inline=False)
-        embed.add_field(name="Message", value=f'{m.group(7)}', inline=False)
-        channel = bot.get_channel(int(live_feed_channel))
-        await channel.send(embed=embed)
+async def parse_log(line):
+    try:
+        if 'is connected' in line:
+            m = re.search(connected, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0x7ED321),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has connected.')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'died' in line:
+            m = re.search(death, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has died.')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
+                embed.add_field(name="Water", value=f'{m.group(7)}')
+                embed.add_field(name="Energy", value=f'{m.group(8)}')
+                embed.add_field(name="Bleed Sources", value=f'{m.group(9)}')
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'disconnected' in line:
+            m = re.match(disconnected, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0x4A90E2),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has disconnected.')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'suicide' in line:
+            m = re.match(suicide, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xF8E71C),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has committed suicide.')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'MeleeFist' in line:
+            m = re.match(melee, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has been hit!')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
+                embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
+                embed.add_field(name="Attacker", value=f'{m.group(8)}', inline=False)
+                embed.add_field(name="ID", value=f'{m.group(9)}', inline=False)
+                embed.add_field(name="Position", value=f'<{m.group(10)} , {m.group(11)} , {m.group(12)}>', inline=True)
+                embed.add_field(name="Target", value=f'{m.group(13)}')
+                embed.add_field(name="Damage", value=f'{m.group(14)}')
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'hit by Player' in line:
+            m = re.match(hit, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has been hit!')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
+                embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
+                embed.add_field(name="Attacker", value=f'{m.group(8)}', inline=False)
+                embed.add_field(name="ID", value=f'{m.group(9)}', inline=False)
+                embed.add_field(name="Position", value=f'<{m.group(10)} , {m.group(11)} , {m.group(12)}>', inline=True)
+                embed.add_field(name="Target", value=f'{m.group(13)}')
+                embed.add_field(name="Damage", value=f'{m.group(14)}')
+                embed.add_field(name="Ammo", value=f'{m.group(15)}')
+                embed.add_field(name="Weapon", value=f'{m.group(16)}')
+                embed.add_field(name="Range", value=f'{m.group(17)} meters')
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'killed by' in line:
+            m = re.match(zombie_kill, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                                  timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} became zombie food!')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
+                embed.add_field(name="Zombie", value=f'{m.group(7)}', inline=False)
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'killed by Player' in line:
+            m = re.match(killed, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has been killed!')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=True)
+                embed.add_field(name="Killer", value=f'{m.group(7)}', inline=False)
+                embed.add_field(name="ID", value=f'{m.group(8)}', inline=False)
+                embed.add_field(name="Position", value=f'<{m.group(9)} , {m.group(10)} , {m.group(11)}>', inline=True)
+                embed.add_field(name="Weapon", value=f'{m.group(12)}')
+                embed.add_field(name="Range", value=f'{m.group(13)} meters')
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'unconscious' in line:
+            m = re.match(unconscious, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has fell unconscious.')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'Wolf' in line:
+            m = re.match(wolf_attack, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xD0021B),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(2)} has been attacked by Wolves!')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(3)}')
+                embed.add_field(name="Position", value=f'<{m.group(4)} , {m.group(5)} , {m.group(6)}>', inline=False)
+                embed.add_field(name="Health", value=f'{m.group(7)}', inline=True)
+                embed.add_field(name="Target", value=f'{m.group(8)}')
+                embed.add_field(name="Damage", value=f'{m.group(9)}')
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+        if 'Chat' in line:
+            m = re.match(chat, line, re.MULTILINE)
+            if m is not None:
+                embed = discord.Embed(colour=discord.Colour(0xF5A623),
+                                      timestamp=datetime.datetime.now().astimezone())
+                embed.set_author(name=f'{m.group(4)}')
+                embed.set_footer(text="Entry Created")
+                embed.add_field(name="BUID", value=f'{m.group(6)}', inline=False)
+                embed.add_field(name="Message", value=f'{m.group(7)}', inline=False)
+                channel = bot.get_channel(int(live_feed_channel))
+                await channel.send(embed=embed)
+
+    except Exception as error:
+        log.info('Parsing Error: ' + str(error))
+        pass
 
 
 global api_count
@@ -345,20 +368,6 @@ async def on_ready():
     bot.loop.create_task(rotate_activity())
     bot.loop.create_task(debug_log_api())
     bot.loop.create_task(log_monitor())
-    computer = wmi.WMI()
-    computer_info = computer.Win32_ComputerSystem()[0]
-    os_info = computer.Win32_OperatingSystem()[0]
-    proc_info = computer.Win32_Processor()[0]
-    gpu_info = computer.Win32_VideoController()[0]
-
-    os_name = os_info.Name.encode('utf-8').split(b'|')[0]
-    os_version = ' '.join([os_info.Version, os_info.BuildNumber])
-    system_ram = float(os_info.TotalVisibleMemorySize) / 1048576  # KB to GB
-    log.info('OS Name: {0}'.format(os_name))
-    log.info('OS Version: {0}'.format(os_version))
-    log.info('CPU: {0}'.format(proc_info.Name))
-    log.info('RAM: {0} GB'.format(system_ram))
-    log.info('Graphics Card: {0}'.format(gpu_info.Name))
 
 
 @bot.command()

@@ -43,10 +43,32 @@ chat = r"(.*) \| \[(.*) (.*)\] \[Chat\] (.*)\(steamid=(.*), bisid=(.*)\) (.*)"
 melee = r"(.*) \| Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\)\[HP: (.*)\] hit by Player \"(.*)\" \(id=(.*) pos=<(.*), (.*), (.*)>\) into (.*) for (.*) damage (.*)"
 zombie_kill = r"(.*) \| Player \"(.*)\" \(DEAD\) \(id=(.*) pos=<(.*), (.*), (.*)>\) killed by (.*)"
 
+with open('config.json', 'r') as config_file:
+    config_data = json.load(config_file)
+    token = config_data['discord_token']
+    report_channel = config_data['report_channel']
+    api_url = config_data['api_url']
+    guild_id = config_data['guild_id']
+    status_refresh = config_data['status_refresh']
+    delayed_refresh = config_data['delayed_refresh']
+    activity_rotate = config_data['activity_rotate']
+    activity_refresh = config_data['activity_refresh']
+    cooldown_channel = config_data['cooldown_channel']
+    cooldown_user = config_data['cooldown_user']
+    staff_role = tuple(config_data['permissions']['staff'])
+    moderator_role = tuple(config_data['permissions']['moderators'])
+    admin_role = tuple(config_data["permissions"]["admins"])
+    live_feed = config_data['live_feed']
+    live_feed_channel = config_data['live_feed_channel']
+
+
 async def log_monitor():
     log_name = './profiles/DayZServer_x64.ADM'
-    log.info("Watching DayZServer_x64.ADM")
-    await adm_scan(log_name)
+    if live_feed is True:
+        log.info("Watching DayZServer_x64.ADM")
+        await adm_scan(log_name)
+    else:
+        log.info("Live Feed Disabled")
 
 
 async def adm_scan(log_name):
@@ -222,23 +244,6 @@ headers = {'contentType': 'application/x-www-form-urlencoded','User-Agent': 'CFT
 logging.basicConfig(format='%(asctime)s %(message)s', datefmt='[%H:%M:%S]')
 log = logging.getLogger()
 log.setLevel(logging.INFO)
-
-with open('config.json', 'r') as config_file:
-    config_data = json.load(config_file)
-    token = config_data['discord_token']
-    report_channel = config_data['report_channel']
-    api_url = config_data['api_url']
-    guild_id = config_data['guild_id']
-    status_refresh = config_data['status_refresh']
-    delayed_refresh = config_data['delayed_refresh']
-    activity_rotate = config_data['activity_rotate']
-    activity_refresh = config_data['activity_refresh']
-    cooldown_channel = config_data['cooldown_channel']
-    cooldown_user = config_data['cooldown_user']
-    staff_role = tuple(config_data['permissions']['staff'])
-    moderator_role = tuple(config_data['permissions']['moderators'])
-    admin_role = tuple(config_data["permissions"]["admins"])
-    live_feed_channel = config_data['live_feed_channel']
 
 server_list = []
 api_count = 0

@@ -2,6 +2,7 @@
 	"discord_token" : "",
 	"api_url" : "https://omegax.cftools.de/api/v1/",
 	"report_channel" : "",
+	"live_feed_channel" : "",
 	"guild_id" : "",
 	"status_refresh": 300,
 	"delayed_refresh": 3600,

@@ -1,4 +1,5 @@
 # Aurora - A DayZ/Discord Bot Written In Python3
+* # Please Note:  This version has been depreciated due to changes in the CFTools API.  Considerable changes will be required to make it work with the current API, and I no longer have the time to devote to the project.  This version remains as an academic exercise for the reader.
 * # Features:
     * Server Information
         * Name
